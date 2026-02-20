@@ -1,22 +1,17 @@
-from abc import ABC, abstractmethod
-from typing import Any
+from src.interfaces.log_file import LogFile
 
-class LogFile(ABC):
-    # Force giving parameters during creation
-    @abstractmethod
+class StandardLogFile(LogFile):
+       # Force giving parameters during creation
     def __init__(self, states: set, PDF: int, sojourn: int):
         self.states: set = states
         self.PDF: int = PDF
         self.sojourn: int = sojourn
 
-    @abstractmethod
     def getStates(self) -> set[str]:
-        raise NotImplementedError
+        return self.states
     
-    @abstractmethod
     def getPDF(self) -> int:
         raise NotImplementedError
 
-    @abstractmethod
     def getSojournTime(self) -> int:
         raise NotImplementedError
