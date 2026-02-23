@@ -17,8 +17,9 @@ File: json_log_parsing_strategy_test.py
 #### Positive tests:
 - [OK] Test that the getStates method in the JsonLogParsingStrategy has a return value of type set.
 - [OK] Test that the getStates method in the JsonLogParsingStrategy returns the complete set of states.
-- [] Test that the getStateTransitions method in JsonLogParsingStrategy returns a list of state transitions and their corresponding count (create a nice data type for this)
-- [] Test that computePDF in JsonLogParsingStrategy creates a PDF (figure out data type for this)
+- [OK] Test that the computePDF method in JsonLogParsingStrategy returns a list of StandardStateTransition objects that has the same amount of elements as the number of unique states.
+- [OK] Test that the count of a transition is at least 1
+- [OK] Test that the sum of toStates in StandardStateTransition is approximately 1 (PDF). This checks that the computePDF method in JsonLogParsingStrategy works properly.
 
 #### Negative tests:
 - NIL

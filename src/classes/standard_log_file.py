@@ -4,7 +4,7 @@ class StandardLogFile(LogFile):
        # Force giving parameters during creation
     def __init__(self, states: set, PDF: int, sojourn: int):
         self.states: set = states
-        self.PDF: int = PDF
+        self.PDF: int = PDF # List of classes that contain information about a single state and its transitions
         self.sojourn: int = sojourn
 
     def getStates(self) -> set[str]:

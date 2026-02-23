@@ -14,9 +14,9 @@ class LogFile(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def getPDF(self) -> int:
+    def getPDF(self) -> dict:
         raise NotImplementedError
 
     @abstractmethod
-    def getSojournTime(self) -> int:
+    def getSojournTime(self) -> dict:
         raise NotImplementedError

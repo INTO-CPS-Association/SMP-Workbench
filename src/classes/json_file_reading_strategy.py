@@ -11,9 +11,18 @@ class JsonFileReadingStrategy(FileReadingStrategy):
     def read(self, path: str) -> JsonFileWrapper:
         results = []
         file_extension: str = pathlib.Path(path).suffix
-        print("file extension:", file_extension)
         if ".json" in file_extension:
             with open(path, 'r') as file:
+                start_pos: int = file.tell()
+                tmp: str = file.readline()
+
+                if "The logger is now ready" in tmp:
+                    # Do nothing - first line skipped successfully (cannot be parsed as json)
+                    pass
+                else:
+                    file.seek(start_pos)
+                
+                # Logic for iterating through json objects
                 for line in file:
                     line.strip() # Remove newlines
                     if line:
