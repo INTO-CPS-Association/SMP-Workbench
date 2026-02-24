@@ -1,17 +1,10 @@
 from src.interfaces.log_file import LogFile
+from src.interfaces.state_transition_info import StateTransitionInfo
 
 class StandardLogFile(LogFile):
        # Force giving parameters during creation
-    def __init__(self, states: set, PDF: int, sojourn: int):
-        self.states: set = states
-        self.PDF: int = PDF # List of classes that contain information about a single state and its transitions
-        self.sojourn: int = sojourn
+    def __init__(self, stateTransitionInfoList: list[StateTransitionInfo]) -> None:
+        self.stateTransitionInfoList = stateTransitionInfoList
 
-    def getStates(self) -> set[str]:
-        return self.states
-    
-    def getPDF(self) -> int:
-        raise NotImplementedError
-
-    def getSojournTime(self) -> int:
-        raise NotImplementedError
+    def getStateTransitionInfoList(self) -> list[StateTransitionInfo]:
+        return self.stateTransitionInfoList

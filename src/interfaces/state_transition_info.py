@@ -1,20 +1,20 @@
 from abc import ABC, abstractmethod
+from src.interfaces.state import State
 
 class StateTransitionInfo(ABC):
 
     @abstractmethod
-    def __init__(self, from_state: str):
-        self.from_state: str = from_state
-        self.to_states: dict[str, int] = {}
+    def __init__(self, fromState: State, toState: State, sojournTime: int) -> None:
+        raise NotImplementedError
 
     @abstractmethod
     def getFromState(self) -> str:
         raise NotImplementedError
     
     @abstractmethod
-    def getToStates(self) -> dict[str, int]:
+    def getToState(self) -> dict[str, int]:
         raise NotImplementedError
     
     @abstractmethod
-    def setToStates(self, to_states: dict[str, int]) -> None:
+    def getSojournTime(self) -> int:
         raise NotImplementedError

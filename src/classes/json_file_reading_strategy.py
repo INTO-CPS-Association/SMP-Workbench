@@ -8,7 +8,7 @@ class JsonFileReadingStrategy(FileReadingStrategy):
 
     # Arg1: Path to file
     # Returns: List of json objects
-    def read(self, path: str) -> JsonFileWrapper:
+    def readFile(self, path: str) -> JsonFileWrapper:
         results = []
         file_extension: str = pathlib.Path(path).suffix
         if ".json" in file_extension:

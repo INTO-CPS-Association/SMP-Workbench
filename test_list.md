@@ -20,6 +20,6 @@ File: json_log_parsing_strategy_test.py
 - [OK] Test that the computePDF method in JsonLogParsingStrategy returns a list of StandardStateTransition objects that has the same amount of elements as the number of unique states.
 - [OK] Test that the count of a transition is at least 1
 - [OK] Test that the sum of toStates in StandardStateTransition is approximately 1 (PDF). This checks that the computePDF method in JsonLogParsingStrategy works properly.
-
+- [ ] Test that the computeSojournTimes method in JsonLogParsingStrategy can retreive Sojourn times for the different transitions
 #### Negative tests:
 - NIL

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from src.interfaces.log_file import LogFile
+from src.interfaces.file_wrapper import FileWrapper
 
 class FileReadingStrategy(ABC):
     @abstractmethod
-    def read(self, path: str) -> LogFile:
+    def readFile(self, path: str) -> FileWrapper:
         raise NotImplementedError

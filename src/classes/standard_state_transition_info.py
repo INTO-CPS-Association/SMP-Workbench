@@ -1,15 +1,17 @@
 from src.interfaces.state_transition_info import StateTransitionInfo
+from src.interfaces.state import State
 
 class StandardStateTransitionInfo(StateTransitionInfo):
-    def __init__(self, from_state: str):
-        self.fromState: str = from_state
-        self.toStates: dict[str, int] = {}
+    def __init__(self, fromState: State, toState: State, sojournTime: int):
+        self.fromState: State = fromState
+        self.toStates: State = toState
+        self.sojournTime: int = sojournTime
 
     def getFromState(self) -> str:
         return self.fromState
     
-    def getToStates(self) -> dict[str, int]:
-        return self.toStates
+    def getToState(self) -> dict[str, int]:
+        return self.toState
     
-    def setToStates(self, toStates: dict[str, int]) -> None:
-        self.toStates: dict[str, int] = toStates
+    def getSojournTime(self) -> int:
+        return self.sojournTime

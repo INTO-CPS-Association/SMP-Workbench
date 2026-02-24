@@ -1,79 +1,28 @@
 import json
 from src.interfaces.log_parsing_strategy import LogParsingStrategy
-from src.interfaces.file_wrapper import FileWrapper
+from src.classes.json_file_wrapper import JsonFileWrapper
+from src.interfaces.log_file import LogFile
 from src.classes.json_file_wrapper import JsonFileWrapper
 from src.classes.standard_state_transition_info import StandardStateTransitionInfo
+from src.classes.standard_state import StandardState
+from src.classes.standard_log_file import StandardLogFile
 
 class JsonLogParsingStrategy(LogParsingStrategy):
-    def computeStates(self, fileWrapper: FileWrapper) -> set:
-        result: set = set()
-        jsonObjects : dict = fileWrapper.getFile()
+    def __init__(self) -> None:
+        pass
         
-        for jsonObject in jsonObjects:
-            result.add(jsonObject["to_state"])
-            result.add(jsonObject["from_state"])
+    def createLogFile(self, fileWrapper: JsonFileWrapper) -> LogFile:
+        # Initialize empty list, will be used to initialize StandardLogFIle 
+        stateTansitionInfoList: list[StandardStateTransitionInfo] = []
 
-        return result
-    
-    def computeStateTransitionCount(self, fileWrapper: FileWrapper) -> list[StandardStateTransitionInfo]:
-        stateTransitionList: list[StandardStateTransitionInfo] = []
-        jsonObjects : dict = fileWrapper.getFile()
-
-        # Create a list of all states in the log file and initiate an instance for each one
-        fromStates: set = self.computeStates(fileWrapper)
-        for state in fromStates:
-            stateTransitionList.append(StandardStateTransitionInfo(state))
-
-        # Traverse through the StandardStateTransitionsInfo list and find the to_states to create the dict
-        for instance in stateTransitionList:
-            fromState: str = instance.getFromState()
-
-            # Traverse through the list of jsonObjects and create/count the amount of times a transition happens
-            for jsonObject in jsonObjects:
-                toStates: dict[str, int] = instance.getToStates()
-
-                # Check if the from_state field matches the name of this instance
-                if fromState == jsonObject["from_state"]:
-                    key: str = jsonObject["to_state"]
-
-                    # If the key exists, increment its count - else create the key with count 1
-                    if key in toStates:
-                        toStates[key] = toStates[key] + 1
-                    else:
-                        toStates[key] = 1
-                
-                instance.setToStates(toStates)
+        # Iterate through the list of json objects from the fileWrapper
+        jsonObjects: list[dict] = fileWrapper.getObjectList()
+        for jsonObject in JsonFileWrapper:
+            # Create state objects
+            fromState: StandardState = StandardState(jsonObject["from_state"])
+            toState: StandardState = StandardState(jsonObject["to_state"])
+            sojournTime: int
+            stateTransitionInfo: StandardStateTransitionInfo = StandardStateTransitionInfo(fromState, toState, sojournTime)
+            stateTansitionInfoList.append(stateTransitionInfo)
         
-        return stateTransitionList
-
-    
-    def computePDF(self, fileWrapper: FileWrapper) -> list[StandardStateTransitionInfo]:
-        stateTransitionInfoList: list[StandardStateTransitionInfo] = []
-
-        stateTransitionInfoList = self.computeStateTransitionCount(fileWrapper)
-
-        for instance in stateTransitionInfoList:
-            transitionSum: int = 0.0
-            toStates: dict[str, int] = instance.getToStates()
-            
-            # Calculate the count of all transitions
-            for key in toStates:
-                transitionSum += toStates[key]
-            
-            # Divide each transition with the tolt
-            for key in toStates:
-                toStates[key] = toStates[key]/transitionSum
-
-        return stateTransitionInfoList
-    
-    def computeSojourn(self, logFile):
-        raise NotImplementedError
-    
-    # TODO: Just a prototype
-    def createLogFile(self, fileWrapper: FileWrapper):
-        #states: set = self.__computeStates(fileWrapper)
-        #pdf: int = self.__computePDF(fileWrapper)
-        #sojourn: int = self.__computeSojourn(fileWrapper)
-        #return StandardLogFile(states, pdf, sojourn)
-        raise NotImplementedError
-    
+        return StandardLogFile(stateTansitionInfoList)

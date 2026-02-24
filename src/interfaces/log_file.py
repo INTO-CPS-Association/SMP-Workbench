@@ -1,22 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from src.interfaces.state_transition_info import StateTransitionInfo
 
 class LogFile(ABC):
     # Force giving parameters during creation
     @abstractmethod
-    def __init__(self, states: set, PDF: int, sojourn: int):
-        self.states: set = states
-        self.PDF: int = PDF
-        self.sojourn: int = sojourn
-
-    @abstractmethod
-    def getStates(self) -> set[str]:
+    def __init__(self, states: set, PDF: int, sojourn: int) -> None:
         raise NotImplementedError
     
-    @abstractmethod
-    def getPDF(self) -> dict:
-        raise NotImplementedError
-
-    @abstractmethod
-    def getSojournTime(self) -> dict:
+    def getStateTransitionInfoList() -> list[StateTransitionInfo]:
         raise NotImplementedError
