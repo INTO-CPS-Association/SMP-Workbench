@@ -17,11 +17,11 @@ class JsonLogParsingStrategy(LogParsingStrategy):
 
         # Iterate through the list of json objects from the fileWrapper
         jsonObjects: list[dict] = fileWrapper.getObjectList()
-        for jsonObject in JsonFileWrapper:
+        for jsonObject in jsonObjects:
             # Create state objects
             fromState: StandardState = StandardState(jsonObject["from_state"])
             toState: StandardState = StandardState(jsonObject["to_state"])
-            sojournTime: int
+            sojournTime: int = jsonObject["sojourn_sec"]
             stateTransitionInfo: StandardStateTransitionInfo = StandardStateTransitionInfo(fromState, toState, sojournTime)
             stateTansitionInfoList.append(stateTransitionInfo)
         

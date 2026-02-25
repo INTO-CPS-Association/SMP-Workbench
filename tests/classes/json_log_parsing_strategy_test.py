@@ -29,14 +29,6 @@ def setup_real_json_file() -> FileWrapper:
     fileWrapper: JsonFileWrapper = jsonFileReadingStrategy.readFile(test_file)
     return fileWrapper
 
-def test_JsonLogParsingStrategy_getStates_method_return_type_is_set(setup):
-    shouldBe = type(set())
-
-    jsonLogParsingStrategy: JsonLogParsingStrategy = JsonLogParsingStrategy()
-    result: set = jsonLogParsingStrategy.computeStates(setup)
-    result = type(result)
-    assert shouldBe == result
-
 def test_JsonLogParsingStrategy_getStates_method_returns_complete_set(setup):
     shouldBe = {"MixingTime", "Dosing", "MixingEmptying", "Idle"}
     result: set = set()

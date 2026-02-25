@@ -18,3 +18,7 @@ class StateTransitionInfo(ABC):
     @abstractmethod
     def getSojournTime(self) -> int:
         raise NotImplementedError
+    
+    @abstractmethod
+    def __eq__(self, other):
+        raise NotImplementedError
