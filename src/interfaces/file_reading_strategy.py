@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-import json
+from src.interfaces.file_wrapper import FileWrapper
 
 class FileReadingStrategy(ABC):
     @abstractmethod
-    def read(self, path: str) -> str:
+    def readFile(self, path: str) -> FileWrapper:
         raise NotImplementedError
