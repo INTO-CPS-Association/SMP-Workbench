@@ -19,8 +19,11 @@ class StandardStateTransitionInfo(StateTransitionInfo):
     # If the fromState and toState of the two instances are equal they are describing
     # an occurance of the same transition (they are equal). In all other cases they are not equal.
     def __eq__(self, other: StateTransitionInfo) -> bool:
+        if not isinstance(other, StateTransitionInfo):
+            return False
+        
         if self.fromState == other.getFromState():
             if self.toState == other.getToState():
                 return True
-        
+            
         return False
