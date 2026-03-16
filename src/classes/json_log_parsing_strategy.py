@@ -20,7 +20,7 @@ class JsonLogParsingStrategy(LogParsingStrategy):
             # Create state objects
             fromState: StandardState = StandardState(jsonObject["from_state"])
             toState: StandardState = StandardState(jsonObject["to_state"])
-            sojournTime: int = int(jsonObject["sojourn_sec"], 10)
+            sojournTime: int = int(jsonObject["sojourn_sec"])
             stateTransitionInfo: StandardStateTransitionInfo = StandardStateTransitionInfo(fromState, toState, sojournTime)
             stateTansitionInfoList.append(stateTransitionInfo)
         

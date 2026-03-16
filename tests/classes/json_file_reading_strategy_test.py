@@ -17,12 +17,12 @@ def test_JsonFileReadingStrategy_read_method_throws_OS_exception_on_wrong_file_t
     test_file = Path(__file__).parent.parent.parent / "files" / "test_files" / "test_exception_file.txt"
     fileStrategy: FileReadingStrategy = JsonFileReadingStrategy()
     with pytest.raises(OSError):
-        jsonLogFile : JsonFileWrapper = fileStrategy.readFile(test_file)
+        _ : JsonFileWrapper = fileStrategy.readFile(test_file)
 
 def test_JsonFileReadingStrategy_read_method_throws_OS_exception_with_proper_value_on_wrong_file_type():
     test_file = Path(__file__).parent.parent.parent / "files" / "test_files" / "test_exception_file.txt"
     fileStrategy: FileReadingStrategy = JsonFileReadingStrategy()
     with pytest.raises(OSError) as excinfo:
-        jsonLogFile : JsonFileWrapper = fileStrategy.readFile(test_file)
+        _ : JsonFileWrapper = fileStrategy.readFile(test_file)
     
     assert "File did not end with .json" == str(excinfo.value)

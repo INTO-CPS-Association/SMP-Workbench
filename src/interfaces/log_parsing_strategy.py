@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Any
 from src.interfaces.file_wrapper import FileWrapper
 from src.interfaces.log_file import LogFile
 

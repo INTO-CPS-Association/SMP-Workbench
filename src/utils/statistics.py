@@ -2,6 +2,7 @@ from src.interfaces.state_transition_info import StateTransitionInfo
 from src.interfaces.state_transition_probability import StateTransitionProbability
 from src.classes.std_state_transition_probability import StdStateTransitionProbability
 from src.interfaces.state import State
+from src.interfaces.state_transition_sojourn import StateTransitionSojourn
 
 # Uses this for more readable algorithm
 class Transition:
@@ -14,7 +15,7 @@ class Transition:
         self.toState = {}
         self.totalTransitions = 0
 
-    def getFromState(self) -> str:
+    def getFromState(self) -> State:
         return self.fromState
     
     def getToStateDict(self) -> dict[State, float]:
@@ -26,7 +27,7 @@ class Transition:
     def incrementTotalTransitions(self) -> None:
         self.totalTransitions += 1
     
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Transition):
             return False
         
@@ -71,7 +72,7 @@ def calculatePDF(stateTransitionInfoList: list[StateTransitionInfo]) -> list[Sta
     
     # Calculate the probability for each toState in every Transition
     for transition in transitionSet:
-        toStateDict: dict = transition.getToStateDict()
+        toStateDict: dict[State, float] = transition.getToStateDict()
         totalTransitions: float = transition.getTotalTransitions()
 
         for key in toStateDict.keys():
@@ -88,3 +89,6 @@ def calculatePDF(stateTransitionInfoList: list[StateTransitionInfo]) -> list[Sta
             result.append(StdStateTransitionProbability(fromState, toState, probability))
     
     return result
+
+def calculateSojourn(stateTransitionInfoList: list[StateTransitionInfo]) -> list[StateTransitionSojourn]:
+    raise NotImplementedError

@@ -1,15 +1,14 @@
 import json
 import pathlib
 from src.interfaces.file_reading_strategy import FileReadingStrategy
-from src.interfaces.file_wrapper import FileWrapper
 from src.classes.json_file_wrapper import JsonFileWrapper
 
 class JsonFileReadingStrategy(FileReadingStrategy):
 
     # Arg1: Path to file
     # Returns: List of json objects
-    def readFile(self, path: str) -> JsonFileWrapper:
-        results = []
+    def readFile(self, path: pathlib.Path) -> JsonFileWrapper:
+        results: list[dict[str,str]]= []
         file_extension: str = pathlib.Path(path).suffix
         if ".json" in file_extension:
             with open(path, 'r') as file:

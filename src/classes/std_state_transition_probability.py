@@ -1,16 +1,16 @@
 from src.interfaces.state_transition_probability import StateTransitionProbability
-from src.classes.standard_state import StandardState
+from src.interfaces.state import State
 
 class StdStateTransitionProbability(StateTransitionProbability):
-    def __init__(self, fromState: StandardState, toState: StandardState, probability: float) -> None:
-        self.fromState: StandardState = fromState
-        self.toState: StandardState = toState
+    def __init__(self, fromState: State, toState: State, probability: float) -> None:
+        self.fromState: State = fromState
+        self.toState: State = toState
         self.probability: float = probability
     
-    def getFromState(self) -> StandardState:
+    def getFromState(self) -> State:
         return self.fromState
 
-    def getToState(self) -> StandardState:
+    def getToState(self) -> State:
         return self.toState
     
     def getProbability(self) -> float:
