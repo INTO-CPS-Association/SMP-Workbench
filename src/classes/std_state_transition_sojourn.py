@@ -9,6 +9,7 @@ class StdStateTransitionSojourn(StateTransitionSojourn):
         self.toState: State = toState
         self.sojournTimes: list[int] = sojournTimes
         self.sojournAverage: float = sojournAverage
+        self.sojournMedian: int = sojournMedian
         self.distribution: Distribution = distribution
     
     def getFromState(self) -> State:
@@ -19,3 +20,12 @@ class StdStateTransitionSojourn(StateTransitionSojourn):
     
     def getSojournTimes(self) -> list[int]:
         return self.sojournTimes
+    
+    def getSojournAverage(self) -> float:
+        return self.sojournAverage
+    
+    def getSojournMedian(self) -> int:
+        return self.sojournMedian
+    
+    def getDistribution(self) -> Distribution:
+        return self.distribution
