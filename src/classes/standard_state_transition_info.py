@@ -7,10 +7,10 @@ class StandardStateTransitionInfo(StateTransitionInfo):
         self.toState: State = toState
         self.sojournTime: int = sojournTime
 
-    def getFromState(self) -> str:
+    def getFromState(self) -> State:
         return self.fromState
     
-    def getToState(self) -> dict[str, int]:
+    def getToState(self) -> State:
         return self.toState
     
     def getSojournTime(self) -> int:
@@ -18,7 +18,7 @@ class StandardStateTransitionInfo(StateTransitionInfo):
     
     # If the fromState and toState of the two instances are equal they are describing
     # an occurance of the same transition (they are equal). In all other cases they are not equal.
-    def __eq__(self, other: StateTransitionInfo) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, StateTransitionInfo):
             return False
         

@@ -22,12 +22,13 @@ File: json_log_parsing_strategy_test.py
 ### calculatePDF
 File: statistics_test.py
 #### Positive tests:
-- [] Test that a PDF of a state transition has a sum of approximately 1
+- [OK] Test that a PDF of a state transition has a sum of approximately 1
 
 #### Negative tests:
-
+NIL
 ### calculateSojourn
 File: statistics_test.py
 #### Positive tests:
-
+- [] Test that a sojourn method in the utils library can return a non empty list of sojourn times
 #### Negative tests:
+NIL
