@@ -47,23 +47,10 @@ def test_calculatePDF_has_sum_of_approximately_1(setup_real_json_file: list[Stat
 
     
 def test_calculateSojourn_returns_non_empty_list(setup_real_json_file: list[StateTransitionInfo]) -> None:
+    lowerBound: int = 0
     tmp: list[StateTransitionInfo] = setup_real_json_file
     stateTransitionSojournList: list[StateTransitionSojourn] = calculateSojourn(tmp)
 
-    # Collect all from states
-    fromStateList: list[State] = []
-    for stateTransitionProbability in stateTransitionProbabilityList:
-        fromStateList.append(stateTransitionProbability.getFromState())
-
-    # Convert state list to a set (for unique values)
-    fromStateSet: set[State] = set(fromStateList)
-
-    # Loop trough list of StateTransitionProbability and sum the probability if the from state matches
-    for state in fromStateSet:
-        PDFSum: float = 0.0
-
-        for stateTransitionProbability in stateTransitionProbabilityList:
-            if state == stateTransitionProbability.getFromState():
-                PDFSum += stateTransitionProbability.getProbability()
-   
-        assert abs(PDFSum - 1.0) < 0 + PRECISION
+    for stateTransitionSojourn in stateTransitionSojournList:
+        result: int = len(stateTransitionSojourn.getSojournTimes())
+        assert lowerBound < result
