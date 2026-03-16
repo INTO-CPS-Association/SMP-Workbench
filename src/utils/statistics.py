@@ -86,7 +86,7 @@ def calculatePDF(stateTransitionInfoList: list[StateTransitionInfo]) -> list[Sta
 
         for key in toStateDict.keys():
             probability: float = toStateDict[key]
-            result.append(StdStateTransitionProbability(fromState, toState, probability))
+            result.append(StdStateTransitionProbability(fromState, key, probability))
     
     return result
 
