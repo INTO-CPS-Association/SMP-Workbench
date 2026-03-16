@@ -15,5 +15,5 @@ class StateTransitionSojourn(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def getSojournTime(self) -> int:
+    def getSojournTimes(self) -> list[int]:
         raise NotImplementedError

@@ -1,18 +1,21 @@
 from src.interfaces.state_transition_sojourn import StateTransitionSojourn
 from src.classes.standard_state import StandardState
+from src.utils.enums import Distribution
+from src.interfaces.state import State
 
 class StdStateTransitionSojourn(StateTransitionSojourn):
-    def __init__(self, fromState: StandardState, toState: StandardState, sojournTimes: list[int], sojournAvg: float, sojournMedian: int, distribution: ) -> None:
+    def __init__(self, fromState: StandardState, toState: StandardState, sojournTimes: list[int], sojournAverage: float, sojournMedian: int, distribution: Distribution) -> None:
         self.fromState: StandardState = fromState
-        self.toState: StandardState = toState
+        self.toState: State = toState
         self.sojournTimes: list[int] = sojournTimes
-        self.sojornAverage: float = 
+        self.sojournAverage: float = sojournAverage
+        self.distribution: Distribution = distribution
     
-    def getFromState(self) -> StandardState:
+    def getFromState(self) -> State:
         return self.fromState
 
-    def getToState(self) -> StandardState:
+    def getToState(self) -> State:
         return self.toState
     
-    def getSojournTime(self) -> int:
-        return self.sojournTime
+    def getSojournTimes(self) -> list[int]:
+        return self.sojournTimes
