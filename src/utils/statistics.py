@@ -7,6 +7,8 @@ from src.classes.std_state_transition_probability import StdStateTransitionProba
 from src.interfaces.state import State
 from src.interfaces.state_transition_sojourn import StateTransitionSojourn
 from src.classes.std_state_transition_sojourn import StdStateTransitionSojourn
+from src.interfaces.state_transition_statistics import StateTransitionStatistics
+from src.classes.std_state_transition_statistics import StdStateTransitionStatistics
 from src.utils.enums import Distribution
 
 # Uses this for more readable algorithm
@@ -71,6 +73,40 @@ class SojournTransition:
     def __hash__(self) -> int:
         return hash(self.fromState)
     
+class StatisticsTransition:
+    fromState: State
+    toState: dict[State, list[int]]
+    
+    def __init__(self, fromState: State):
+        self.fromState: State = fromState
+        self.toStatePDF: dict[State, float] = {}
+        self.toStateSojourn: dict[State, list[int]] = {}
+        self.totalTransitions = 0
+
+    def getFromState(self) -> State:
+        return self.fromState
+    
+    def getToStatePDF(self) -> dict[State, float]:
+        return self.toStatePDF
+    
+    def getToStateSojourn(self) -> dict[State, list[int]]:
+        return self.toStateSojourn
+    
+    def getTotalTransitions(self) -> float:
+        return self.totalTransitions
+    
+    def incrementTotalTransitions(self) -> None:
+        self.totalTransitions += 1
+    
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, StatisticsTransition):
+            return False
+        
+        return self.fromState == other.fromState
+
+    def __hash__(self) -> int:
+        return hash(self.fromState)
+    
 
 def calculatePDF(stateTransitionInfoList: list[StateTransitionInfo]) -> list[StateTransitionProbability]:
     transitionSet: set[PDFTransition] = set()
@@ -83,7 +119,6 @@ def calculatePDF(stateTransitionInfoList: list[StateTransitionInfo]) -> list[Sta
 
         transitionSet.add(transition)
 
-    print("Size of trans set:", len(transitionSet))
     # For each of the possible transitions, count the amount of occurances in the input list
     for transition in transitionSet:
         transFromState: State = transition.getFromState()
@@ -209,3 +244,84 @@ def find_distribution(input: list[int]) -> Distribution:
     
     # Default case
     return Distribution.NONE
+
+def calculateStatistics(stateTransitionInfoList: list[StateTransitionInfo]) -> list[StateTransitionStatistics]:
+    transitionSet: set[StatisticsTransition] = set()
+
+    # Create a set of Transitions, initializing with the from state
+    for stateTransitionInfo in stateTransitionInfoList:
+        fromState: State = stateTransitionInfo.getFromState()
+
+        transition: StatisticsTransition = StatisticsTransition(fromState)
+
+        transitionSet.add(transition)
+
+      # For each of the possible transitions, count the amount of occurances in the input list
+    for transition in transitionSet:
+        transFromState: State = transition.getFromState()
+
+        for stateTransitionInfo in stateTransitionInfoList:
+            fromState: State = stateTransitionInfo.getFromState()
+
+            # If the from state is equal, then check the toState
+            if fromState == transFromState:
+                toState: State = stateTransitionInfo.getToState()
+
+                # Increment the totalTransitionsCount
+                transition.incrementTotalTransitions()
+
+                # Get the toState dict and check if the key is already there. If it is, increment by 1
+                # if it is not there, create it with a value of 1
+                toStateDict: dict[State, float] = transition.getToStatePDF()
+                if toState in toStateDict.keys():
+                    toStateDict[toState] += 1
+                else:
+                    toStateDict[toState] = 1
+            
+    # Calculate the probability for each toState in every Transition
+    for transition in transitionSet:
+        toStateDict: dict[State, float] = transition.getToStatePDF()
+        totalTransitions: float = transition.getTotalTransitions()
+
+        for key in toStateDict.keys():
+            toStateDict[key] = toStateDict[key] / totalTransitions
+    
+    
+    ## SOJOURN
+    # For each of the transitions add the toState to the dictionary, such that we can record the sojourn time.
+    # If there is no entry, create it and if there is an entry, append the sojourn time
+    for transition in transitionSet:
+        transFromState: State = transition.getFromState()
+
+        for stateTransitionInfo in stateTransitionInfoList:
+            fromState: State = stateTransitionInfo.getFromState()
+
+            # If the from state is equal, then check the toState
+            if fromState == transFromState:
+                toState: State = stateTransitionInfo.getToState()
+
+                # Get the toState dict and check if the key is already there. If it is, append the sojourn time
+                # if it is not there, create a list with the sojourn time in it
+                toStateDict: dict[State, list[int]] = transition.getToStateSojourn()
+                if toState in toStateDict.keys():
+                    toStateDict[toState].append(stateTransitionInfo.getSojournTime())
+                else:
+                    toStateDict[toState] = [stateTransitionInfo.getSojournTime()]
+
+    # Create the final result list
+    result: list[StateTransitionStatistics] = []
+    for transition in transitionSet:
+        fromState: State = transition.getFromState()
+        toStateSojourn: dict[State, list[int]] = transition.getToStateSojourn()
+        toStatePDF: dict[State, float] = transition.getToStatePDF()
+
+        for key in toStateSojourn.keys():
+            sojournTimes: list[int] = toStateSojourn[key]
+            avg: float = np.average(sojournTimes)
+            median: float = np.median(sojournTimes)
+            distribution = find_distribution(sojournTimes)
+            probability: float = toStatePDF[key]
+
+            result.append(StdStateTransitionStatistics(fromState, key, sojournTimes, avg, median, distribution, probability))
+    
+    return result
