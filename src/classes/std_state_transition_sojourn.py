@@ -5,11 +5,11 @@ from src.interfaces.state import State
 
 class StdStateTransitionSojourn(StateTransitionSojourn):
     def __init__(self, fromState: StandardState, toState: StandardState, sojournTimes: list[int], sojournAverage: float, sojournMedian: int, distribution: Distribution) -> None:
-        self.fromState: StandardState = fromState
+        self.fromState: State = fromState
         self.toState: State = toState
         self.sojournTimes: list[int] = sojournTimes
         self.sojournAverage: float = sojournAverage
-        self.sojournMedian: int = sojournMedian
+        self.sojournMedian: float = sojournMedian
         self.distribution: Distribution = distribution
     
     def getFromState(self) -> State:
@@ -24,7 +24,7 @@ class StdStateTransitionSojourn(StateTransitionSojourn):
     def getSojournAverage(self) -> float:
         return self.sojournAverage
     
-    def getSojournMedian(self) -> int:
+    def getSojournMedian(self) -> float:
         return self.sojournMedian
     
     def getDistribution(self) -> Distribution:
