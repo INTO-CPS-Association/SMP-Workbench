@@ -11,3 +11,4 @@ class Distribution(Enum):
     BETA = "beta"
     LOGNORMAL = "lognormal"
     WEIBULL = "weibull"
+    NONE = "none"
