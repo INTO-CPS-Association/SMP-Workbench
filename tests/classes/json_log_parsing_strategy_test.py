@@ -10,8 +10,8 @@ from src.classes.standard_state_transition_info import StandardStateTransitionIn
 from src.classes.json_file_wrapper import JsonFileWrapper
 from src.classes.json_file_reading_strategy import JsonFileReadingStrategy
 from src.classes.json_log_parsing_strategy import JsonLogParsingStrategy
-from src.classes.standard_log_file import StandardLogFile
-from src.classes.standard_state import StandardState
+from src.interfaces.log_file import LogFile
+from src.interfaces.state import State
 
 # Run this before every test function in this file
 @pytest.fixture(scope="module", autouse=True)
@@ -34,14 +34,14 @@ def test_JsonLogParsingStrategy_getStates_method_returns_complete_set(setup):
     result: set = set()
 
     jsonLogParsingStrategy: LogParsingStrategy = JsonLogParsingStrategy()
-    logFile: StandardLogFile = jsonLogParsingStrategy.createLogFile(setup)
-    stateTransitionInfoList: list[StandardStateTransitionInfo] = logFile.getStateTransitionInfoList()
+    logFile: LogFile = jsonLogParsingStrategy.createLogFile(setup)
+    stateTransitionInfoList: list[StateTransitionInfo] = logFile.getStateTransitionInfoList()
 
     # add the states to result
     for stateTransitionIinfo in stateTransitionInfoList:
-        fromState: StandardState = stateTransitionIinfo.getFromState()
+        fromState: State = stateTransitionIinfo.getFromState()
         fromStateName: str = fromState.getName()
-        toState: StandardState = stateTransitionIinfo.getToState()
+        toState: State = stateTransitionIinfo.getToState()
         toStateName: str = toState.getName()
 
         result.add(fromStateName)
