@@ -1,4 +1,5 @@
 import Loader from "../components/Loader"
+import LoadingButton from "../components/LoadingButton";
 import styles from "./Loading.module.css"
 
 function Loading() {
@@ -9,6 +10,9 @@ function Loading() {
             </div>
             <div>
                 <Loader/>
+            </div>
+            <div>
+                <LoadingButton />
             </div>
         </div>
     );
