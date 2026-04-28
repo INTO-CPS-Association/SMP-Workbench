@@ -1,0 +1,44 @@
+.label {
+  background: rgba(22, 23, 29, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: all;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+}
+
+.key {
+  color: rgba(255, 255, 255, 0.5);
+  min-width: 28px;
+  font-weight: 500;
+}
+
+.value {
+  color: #fff;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.value:hover {
+  border-bottom-color: rgba(255, 255, 255, 0.4);
+}
+
+.input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  outline: none;
+  color: #fff;
+  font-size: 10px;
+  width: 48px;
+}

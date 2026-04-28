@@ -1,0 +1,206 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 24px 48px;
+  box-sizing: border-box;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.title {
+  font-size: 48px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 12px;
+  letter-spacing: -1.5px;
+}
+
+.subtitle {
+  color: var(--text);
+  font-size: 16px;
+  margin: 0;
+}
+
+.main {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  max-width: 780px;
+}
+
+.card {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--bg);
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 8px;
+}
+
+.cardDescription {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+.dropZone {
+  width: 100%;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 28px 16px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  box-sizing: border-box;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.dropZone:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.dropZoneActive {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+.fileCount {
+  display: block;
+  font-weight: 500;
+  color: var(--text-h);
+  margin-bottom: 2px;
+}
+
+.fileHint {
+  display: block;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.btn {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.btnPrimary {
+  background: var(--accent);
+  color: white;
+}
+
+.btnPrimary:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.btnDisabled {
+  background: var(--border);
+  color: var(--text);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 72px;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+  opacity: 0.6;
+  user-select: none;
+}
+
+.dividerLine {
+  width: 1px;
+  height: 40px;
+  background: var(--border);
+}
+
+.continueRow {
+  margin-top: 40px;
+  width: 100%;
+  max-width: 780px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.continueBtn {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  background: var(--accent);
+  color: white;
+}
+
+.continueBtn:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.continueBtnDisabled {
+  background: var(--border);
+  color: var(--text);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+  .main {
+    flex-direction: column;
+  }
+
+  .divider {
+    flex-direction: row;
+    padding-top: 0;
+    width: 100%;
+  }
+
+  .dividerLine {
+    width: 40px;
+    height: 1px;
+    flex: 1;
+  }
+
+  .title {
+    font-size: 32px;
+  }
+}
