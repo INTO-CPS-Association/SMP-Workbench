@@ -5,9 +5,9 @@ from typing import List
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
-from src.classes.json_file_reading_strategy import JsonFileReadingStrategy
-from src.classes.json_log_parsing_strategy import JsonLogParsingStrategy
-from src.utils.statistics import calculateStatistics
+from classes.json_file_reading_strategy import JsonFileReadingStrategy
+from classes.json_log_parsing_strategy import JsonLogParsingStrategy
+from utils.statistics import calculateStatistics
 from backend.schemas import AnalysisResponse, NodeSchema, EdgeSchema
 
 router = APIRouter(prefix="/api", tags=["analysis"])
@@ -50,6 +50,7 @@ async def analyze_files(files: List[UploadFile] = File(...)):
             target=stat.getToState().getName(),
             probability=round(stat.getProbability(), 4),
             avgSojournTime=round(stat.getSojournAverage(), 2),
+            transitionCount=len(stat.getSojournTimes()),
         )
         for stat in statistics
     ]

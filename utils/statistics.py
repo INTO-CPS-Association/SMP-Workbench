@@ -3,13 +3,13 @@ from scipy import stats
 
 from src.interfaces.state_transition_info import StateTransitionInfo
 from src.interfaces.state_transition_probability import StateTransitionProbability
-from src.classes.std_state_transition_probability import StdStateTransitionProbability
+from classes.std_state_transition_probability import StdStateTransitionProbability
 from src.interfaces.state import State
 from src.interfaces.state_transition_sojourn import StateTransitionSojourn
-from src.classes.std_state_transition_sojourn import StdStateTransitionSojourn
+from classes.std_state_transition_sojourn import StdStateTransitionSojourn
 from src.interfaces.state_transition_statistics import StateTransitionStatistics
-from src.classes.std_state_transition_statistics import StdStateTransitionStatistics
-from src.utils.enums import Distribution
+from classes.std_state_transition_statistics import StdStateTransitionStatistics
+from utils.enums import Distribution
 
 # Uses this for more readable algorithm
 class PDFTransition:
@@ -202,7 +202,7 @@ def calculateSojourn(stateTransitionInfoList: list[StateTransitionInfo]) -> list
         for key in toStateDict.keys():
             sojournTimes: list[int] = toStateDict[key]
             avg: float = np.average(sojournTimes)
-            median: float = np.median(sojournTimes)
+            median: float = float(np.median(sojournTimes))
             distribution = find_distribution(sojournTimes)
             result.append(StdStateTransitionSojourn(fromState, key, sojournTimes, avg, median, distribution))
     
@@ -318,7 +318,7 @@ def calculateStatistics(stateTransitionInfoList: list[StateTransitionInfo]) -> l
         for key in toStateSojourn.keys():
             sojournTimes: list[int] = toStateSojourn[key]
             avg: float = np.average(sojournTimes)
-            median: float = np.median(sojournTimes)
+            median: float = float(np.median(sojournTimes))
             distribution = find_distribution(sojournTimes)
             probability: float = toStatePDF[key]
 

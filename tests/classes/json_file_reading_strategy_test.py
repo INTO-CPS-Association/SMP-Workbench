@@ -2,8 +2,8 @@ import json
 import pytest
 from pathlib import Path
 from src.interfaces.file_reading_strategy import FileReadingStrategy
-from src.classes.json_file_reading_strategy import JsonFileReadingStrategy
-from src.classes.json_file_wrapper import JsonFileWrapper
+from classes.json_file_reading_strategy import JsonFileReadingStrategy
+from classes.json_file_wrapper import JsonFileWrapper
 
 def test_JsonFileReadingStrategy_read_method_returns_json_file_wrapper_class():
     test_file = Path(__file__).parent.parent.parent / "files" / "test_files" / "test_file0.json"

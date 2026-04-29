@@ -11,6 +11,7 @@ export interface AnalysisEdge {
   target: string;
   probability: number;
   avgSojournTime: number;
+  transitionCount: number;
 }
 
 export interface AnalysisResult {
@@ -21,8 +22,6 @@ export interface AnalysisResult {
 export async function analyzeFiles(files: FileList): Promise<AnalysisResult> {
   const formData = new FormData();
   Array.from(files).forEach((file) => formData.append('files', file));
-  const response = await client.post<AnalysisResult>('/api/analyze', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await client.post<AnalysisResult>('/api/analyze', formData);
   return response.data;
 }

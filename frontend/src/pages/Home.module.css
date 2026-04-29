@@ -160,27 +160,24 @@
 }
 
 .continueBtn {
-  padding: 12px 32px;
-  border: none;
+  padding: 8px 20px;
+  border: 1px dashed var(--border);
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
-  background: var(--accent);
-  color: white;
+  opacity: 0.5;
+  transition: opacity 0.2s;
 }
 
 .continueBtn:hover {
-  opacity: 0.88;
-  transform: translateY(-1px);
+  opacity: 1;
 }
 
 .continueBtnDisabled {
-  background: var(--border);
-  color: var(--text);
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.2;
 }
 
 @media (max-width: 640px) {

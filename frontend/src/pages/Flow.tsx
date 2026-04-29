@@ -12,7 +12,7 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import type { Connection, Node, Edge } from '@xyflow/react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import '@xyflow/react/dist/style.css';
 import '../index.css';
@@ -31,7 +31,8 @@ const edgeTypes = { labeled: LabeledEdge };
 
 const DEFAULT_EDGE_OPTIONS = {
   type: 'labeled',
-  markerEnd: { type: MarkerType.ArrowClosed, width: 25, height: 25 },
+  markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+  style: { strokeWidth: 1.5, stroke: 'var(--accent)', opacity: 0.85 },
   data: { probability: 0.0, avgSojournTime: 0.0 },
 };
 
@@ -39,7 +40,7 @@ let id = 0;
 const getId = () => `dndnode_${id++}`;
 
 function circularLayout(count: number) {
-  const radius = Math.max(180, count * 50);
+  const radius = Math.max(300, count * 80);
   const cx = 500, cy = 300;
   return Array.from({ length: count }, (_, i) => {
     const angle = (2 * Math.PI * i) / count - Math.PI / 2;
@@ -60,7 +61,7 @@ function buildFromAnalysis(result: AnalysisResult): { nodes: Node[]; edges: Edge
     source: e.source,
     target: e.target,
     ...DEFAULT_EDGE_OPTIONS,
-    data: { probability: e.probability, avgSojournTime: e.avgSojournTime },
+    data: { probability: e.probability, avgSojournTime: e.avgSojournTime, transitionCount: e.transitionCount },
   }));
   return { nodes, edges };
 }
@@ -68,25 +69,32 @@ function buildFromAnalysis(result: AnalysisResult): { nodes: Node[]; edges: Edge
 const DnDFlow = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition } = useReactFlow();
   const [type] = useDnD();
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
 
-  // Populate graph from analysis result or loaded project
+  // Populate graph from analysis result, loaded project, or persisted session graph
   useEffect(() => {
     const analysisResult: AnalysisResult | null = store.getAnalysisResult();
     const locationGraph = (location.state as any)?.graph;
+    const sessionGraph = store.getCurrentGraph();
 
     if (analysisResult) {
       const { nodes: n, edges: e } = buildFromAnalysis(analysisResult);
       setNodes(n);
       setEdges(e);
       store.setAnalysisResult(null);
+      store.setCurrentGraph({ nodes: n, edges: e });
     } else if (locationGraph) {
       setNodes(locationGraph.nodes ?? []);
       setEdges(locationGraph.edges ?? []);
+      store.setCurrentGraph({ nodes: locationGraph.nodes ?? [], edges: locationGraph.edges ?? [] });
+    } else if (sessionGraph) {
+      setNodes(sessionGraph.nodes);
+      setEdges(sessionGraph.edges);
     }
   }, []);
 
@@ -150,6 +158,11 @@ const DnDFlow = () => {
     }
   }, [nodes, edges]);
 
+  const onStatistics = useCallback(() => {
+    store.setCurrentGraph({ nodes, edges });
+    navigate('/statistics', { state: { nodes, edges } });
+  }, [nodes, edges, navigate]);
+
   return (
     <div className="dndflow">
       <div
@@ -187,7 +200,7 @@ const DnDFlow = () => {
           <Background />
         </ReactFlow>
       </div>
-      <Sidebar onSave={onSave} onSaveAs={onSaveAs} />
+      <Sidebar onSave={onSave} onSaveAs={onSaveAs} onStatistics={onStatistics} />
     </div>
   );
 };

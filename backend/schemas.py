@@ -13,6 +13,7 @@ class EdgeSchema(BaseModel):
     target: str
     probability: float
     avgSojournTime: float
+    transitionCount: int
 
 
 class AnalysisResponse(BaseModel):

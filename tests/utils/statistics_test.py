@@ -1,12 +1,12 @@
 import pytest
 from pathlib import Path
-from src.utils.statistics import calculatePDF, calculateSojourn, calculateStatistics
+from utils.statistics import calculatePDF, calculateSojourn, calculateStatistics
 from src.interfaces.state_transition_info import StateTransitionInfo
 from src.interfaces.state_transition_probability import StateTransitionProbability
 from src.interfaces.state import State
-from src.classes.json_file_wrapper import JsonFileWrapper
-from src.classes.json_file_reading_strategy import JsonFileReadingStrategy
-from src.classes.json_log_parsing_strategy import JsonLogParsingStrategy
+from classes.json_file_wrapper import JsonFileWrapper
+from classes.json_file_reading_strategy import JsonFileReadingStrategy
+from classes.json_log_parsing_strategy import JsonLogParsingStrategy
 from src.interfaces.log_file import LogFile
 from src.interfaces.state_transition_sojourn import StateTransitionSojourn
 from src.interfaces.state_transition_statistics import StateTransitionStatistics

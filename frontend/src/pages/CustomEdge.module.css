@@ -1,44 +1,52 @@
 .label {
-  background: rgba(22, 23, 29, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 4px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   pointer-events: all;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10px;
+  gap: 5px;
+  font-size: 11px;
+  font-family: var(--mono);
 }
 
 .key {
-  color: rgba(255, 255, 255, 0.5);
-  min-width: 28px;
-  font-weight: 500;
+  color: var(--text);
+  min-width: 12px;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .value {
-  color: #fff;
+  color: var(--text-h);
   cursor: pointer;
   border-bottom: 1px solid transparent;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, color 0.15s;
 }
 
 .value:hover {
-  border-bottom-color: rgba(255, 255, 255, 0.4);
+  border-bottom-color: var(--accent);
+  color: var(--accent);
 }
 
 .input {
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid var(--accent);
   outline: none;
-  color: #fff;
-  font-size: 10px;
+  color: var(--text-h);
+  font-size: 11px;
+  font-family: var(--mono);
   width: 48px;
 }

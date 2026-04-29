@@ -6,10 +6,10 @@ from src.interfaces.file_reading_strategy import FileReadingStrategy
 from src.interfaces.log_parsing_strategy import LogParsingStrategy
 from src.interfaces.file_wrapper import FileWrapper
 from src.interfaces.state_transition_info import StateTransitionInfo
-from src.classes.standard_state_transition_info import StandardStateTransitionInfo
-from src.classes.json_file_wrapper import JsonFileWrapper
-from src.classes.json_file_reading_strategy import JsonFileReadingStrategy
-from src.classes.json_log_parsing_strategy import JsonLogParsingStrategy
+from classes.standard_state_transition_info import StandardStateTransitionInfo
+from classes.json_file_wrapper import JsonFileWrapper
+from classes.json_file_reading_strategy import JsonFileReadingStrategy
+from classes.json_log_parsing_strategy import JsonLogParsingStrategy
 from src.interfaces.log_file import LogFile
 from src.interfaces.state import State
 

@@ -17,7 +17,15 @@ class StateTransitionStatistics(ABC):
     @abstractmethod
     def getSojournTimes(self) -> list[int]:
         raise NotImplementedError
-    
+
+    @abstractmethod
+    def getSojournAverage(self) -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    def getSojournMedian(self) -> float:
+        raise NotImplementedError
+
     @abstractmethod
     def getProbability(self) -> float:
         raise NotImplementedError
