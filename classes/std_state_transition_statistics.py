@@ -1,10 +1,9 @@
 from src.interfaces.state_transition_statistics import StateTransitionStatistics
-from classes.standard_state import StandardState
 from utils.enums import Distribution
 from src.interfaces.state import State
 
 class StdStateTransitionStatistics(StateTransitionStatistics):
-    def __init__(self, fromState: StandardState, toState: StandardState, sojournTimes: list[int], sojournAverage: float, sojournMedian: float, distribution: Distribution, probability: float) -> None:
+    def __init__(self, fromState: State, toState: State, sojournTimes: list[int], sojournAverage: float, sojournMedian: float, distribution: Distribution, probability: float) -> None:
         self.fromState: State = fromState
         self.toState: State = toState
         self.sojournTimes: list[int] = sojournTimes

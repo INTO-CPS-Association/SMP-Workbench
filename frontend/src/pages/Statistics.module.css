@@ -105,3 +105,165 @@ tr:hover td {
   color: var(--text);
   opacity: 0.4;
 }
+
+.recalibBadge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: rgba(250, 204, 21, 0.18);
+  color: #b45309;
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  vertical-align: middle;
+}
+
+@media (prefers-color-scheme: dark) {
+  .recalibBadge {
+    background: rgba(250, 204, 21, 0.12);
+    color: #fbbf24;
+    border-color: rgba(250, 204, 21, 0.3);
+  }
+}
+
+/* ── Suspicious files section ──────────────────────────────────── */
+
+.suspiciousSection {
+  margin-bottom: 48px;
+}
+
+.suspiciousHeader {
+  margin-bottom: 16px;
+}
+
+.suspiciousTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 6px;
+  letter-spacing: -0.3px;
+}
+
+.suspiciousDesc {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+.suspiciousFilename {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.suspiciousCount {
+  font-weight: 700;
+  color: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  .suspiciousCount {
+    color: #fbbf24;
+  }
+}
+
+/* ── Quarantine section ────────────────────────────────────────── */
+
+.quarantineSection {
+  margin-top: 48px;
+}
+
+.quarantineHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.quarantineTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 6px;
+  letter-spacing: -0.3px;
+}
+
+.quarantineDesc {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+  max-width: 560px;
+  line-height: 1.5;
+}
+
+.selectAllBtn {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.selectAllBtn:hover {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+.checkTh {
+  width: 40px;
+  padding-right: 0 !important;
+}
+
+.checkTd {
+  padding-right: 0 !important;
+}
+
+.checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.includedRow td {
+  background: var(--accent-bg) !important;
+}
+
+/* Outlier score bar */
+.scoreCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scoreBar {
+  width: 80px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.scoreFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+
+.scoreNum {
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text);
+  min-width: 32px;
+}

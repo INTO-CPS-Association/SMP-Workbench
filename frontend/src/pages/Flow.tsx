@@ -61,7 +61,12 @@ function buildFromAnalysis(result: AnalysisResult): { nodes: Node[]; edges: Edge
     source: e.source,
     target: e.target,
     ...DEFAULT_EDGE_OPTIONS,
-    data: { probability: e.probability, avgSojournTime: e.avgSojournTime, transitionCount: e.transitionCount },
+    data: {
+      probability: e.probability,
+      avgSojournTime: e.avgSojournTime,
+      transitionCount: e.transitionCount,
+      cleanSojournTimes: e.cleanSojournTimes,
+    },
   }));
   return { nodes, edges };
 }
@@ -86,6 +91,8 @@ const DnDFlow = () => {
       const { nodes: n, edges: e } = buildFromAnalysis(analysisResult);
       setNodes(n);
       setEdges(e);
+      store.setQuarantinedEntries(analysisResult.quarantined ?? []);
+      store.setSuspiciousFiles(analysisResult.suspiciousFiles ?? []);
       store.setAnalysisResult(null);
       store.setCurrentGraph({ nodes: n, edges: e });
     } else if (locationGraph) {

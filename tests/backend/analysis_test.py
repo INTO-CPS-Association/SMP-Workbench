@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from backend.main import app
 from classes.json_file_reading_strategy import JsonFileReadingStrategy
 from classes.json_log_parsing_strategy import JsonLogParsingStrategy
-from utils.statistics import calculateStatistics
+from utils.statistics import calculateStatistics, QuarantinedEntry
 from src.interfaces.state_transition_info import StateTransitionInfo
 from src.interfaces.state_transition_statistics import StateTransitionStatistics
 
@@ -33,12 +33,17 @@ def _probability_sums(stats: list[StateTransitionStatistics]) -> dict[str, float
     return sums
 
 
+def _total_accounted(stats: list[StateTransitionStatistics], quarantined: list[QuarantinedEntry]) -> int:
+    """All input transitions must be accounted for: clean in stats + quarantined."""
+    return sum(len(s.getSojournTimes()) for s in stats) + len(quarantined)
+
+
 # ── unit tests ────────────────────────────────────────────────────────────────
 
 class TestCalculateStatisticsSingleFile:
     def setup_method(self):
         self.transitions = _load_transitions(FILE_A)
-        self.stats = calculateStatistics(self.transitions)
+        self.stats, self.quarantined = calculateStatistics(self.transitions)
 
     def test_returns_non_empty_list(self):
         assert len(self.stats) > 0
@@ -53,10 +58,11 @@ class TestCalculateStatisticsSingleFile:
         for s in self.stats:
             assert all(t >= 0 for t in s.getSojournTimes())
 
-    def test_transition_count_matches_sojourn_list_length(self):
-        transitions_a = _load_transitions(FILE_A)
-        for s in self.stats:
-            assert len(s.getSojournTimes()) >= 1
+    def test_all_transitions_accounted_for(self):
+        assert _total_accounted(self.stats, self.quarantined) == len(self.transitions)
+
+    def test_quarantined_is_list(self):
+        assert isinstance(self.quarantined, list)
 
 
 class TestCalculateStatisticsMultiFile:
@@ -64,9 +70,9 @@ class TestCalculateStatisticsMultiFile:
         self.transitions_a = _load_transitions(FILE_A)
         self.transitions_b = _load_transitions(FILE_B)
         self.combined = self.transitions_a + self.transitions_b
-        self.stats_a = calculateStatistics(self.transitions_a)
-        self.stats_b = calculateStatistics(self.transitions_b)
-        self.stats_combined = calculateStatistics(self.combined)
+        self.stats_a, self.quarantined_a = calculateStatistics(self.transitions_a)
+        self.stats_b, self.quarantined_b = calculateStatistics(self.transitions_b)
+        self.stats_combined, self.quarantined_combined = calculateStatistics(self.combined)
 
     def test_combined_has_at_least_as_many_results_as_either_file(self):
         assert len(self.stats_combined) >= max(len(self.stats_a), len(self.stats_b))
@@ -77,13 +83,8 @@ class TestCalculateStatisticsMultiFile:
                 f"Probabilities for '{from_state}' sum to {total} in combined result"
             )
 
-    def test_combined_transition_counts_exceed_single_file(self):
-        def total_transitions(stats):
-            return sum(len(s.getSojournTimes()) for s in stats)
-
-        assert total_transitions(self.stats_combined) == (
-            total_transitions(self.stats_a) + total_transitions(self.stats_b)
-        )
+    def test_combined_all_transitions_accounted_for(self):
+        assert _total_accounted(self.stats_combined, self.quarantined_combined) == len(self.combined)
 
     def test_states_from_both_files_appear_in_combined_result(self):
         def state_names(stats):
@@ -100,16 +101,20 @@ class TestCalculateStatisticsMultiFile:
         assert names_a.issubset(names_combined)
         assert names_b.issubset(names_combined)
 
-    def test_shared_states_have_higher_transition_counts_when_combined(self):
-        def counts_by_transition(stats):
-            return {
-                (s.getFromState().getName(), s.getToState().getName()): len(s.getSojournTimes())
-                for s in stats
-            }
+    def test_shared_states_have_transitions_in_combined(self):
+        def total_counts_by_transition(stats, quarantined):
+            counts: dict[tuple[str, str], int] = {}
+            for s in stats:
+                key = (s.getFromState().getName(), s.getToState().getName())
+                counts[key] = counts.get(key, 0) + len(s.getSojournTimes())
+            for q in quarantined:
+                key = (q.fromState, q.toState)
+                counts[key] = counts.get(key, 0) + 1
+            return counts
 
-        counts_a = counts_by_transition(self.stats_a)
-        counts_b = counts_by_transition(self.stats_b)
-        counts_combined = counts_by_transition(self.stats_combined)
+        counts_a = total_counts_by_transition(self.stats_a, self.quarantined_a)
+        counts_b = total_counts_by_transition(self.stats_b, self.quarantined_b)
+        counts_combined = total_counts_by_transition(self.stats_combined, self.quarantined_combined)
 
         shared = set(counts_a) & set(counts_b)
         for key in shared:
@@ -130,7 +135,7 @@ class TestAnalyzeEndpoint:
             )
         assert response.status_code == 200
 
-    def test_single_file_response_has_nodes_and_edges(self):
+    def test_single_file_response_has_nodes_edges_quarantined(self):
         with open(FILE_A, "rb") as f:
             data = client.post(
                 "/api/analyze",
@@ -138,8 +143,19 @@ class TestAnalyzeEndpoint:
             ).json()
         assert "nodes" in data
         assert "edges" in data
+        assert "quarantined" in data
         assert len(data["nodes"]) > 0
         assert len(data["edges"]) > 0
+
+    def test_edges_include_clean_sojourn_times(self):
+        with open(FILE_A, "rb") as f:
+            data = client.post(
+                "/api/analyze",
+                files=[("files", ("test_file0.json", f, "application/json"))],
+            ).json()
+        for edge in data["edges"]:
+            assert "cleanSojournTimes" in edge
+            assert isinstance(edge["cleanSojournTimes"], list)
 
     def test_multi_file_returns_200(self):
         with open(FILE_A, "rb") as fa, open(FILE_B, "rb") as fb:

@@ -1,0 +1,282 @@
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="1350" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+
+    <!-- Title -->
+    <mxCell id="title" value="SMP Visualizer — System Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=22;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="600" y="10" width="900" height="40" as="geometry"/>
+    </mxCell>
+
+    <!-- ================================================================
+         FRONTEND  (x=20..660)
+    ================================================================ -->
+    <mxCell id="fe" value="Frontend (React + TypeScript + Vite)" style="swimlane;fontStyle=1;fontSize=13;startSize=35;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="60" width="640" height="730" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="fe-router" value="App.tsx (BrowserRouter)" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="fe">
+      <mxGeometry x="195" y="50" width="240" height="45" as="geometry"/>
+    </mxCell>
+
+    <!-- Pages sub-swimlane -->
+    <mxCell id="fe-pages" value="Pages / Routes" style="swimlane;startSize=28;fillColor=#edf4fe;strokeColor=#6c8ebf;" vertex="1" parent="fe">
+      <mxGeometry x="20" y="130" width="275" height="350" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe-home" value="Home.tsx&#xa;file upload + project load" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#6c8ebf;" vertex="1" parent="fe-pages">
+      <mxGeometry x="15" y="40" width="245" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe-loading" value="Loading.tsx&#xa;calls analyzeFilesStreaming()&#xa;shows progress bar" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#6c8ebf;" vertex="1" parent="fe-pages">
+      <mxGeometry x="15" y="110" width="245" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe-flow" value="Flow.tsx&#xa;ReactFlow graph editor" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#6c8ebf;" vertex="1" parent="fe-pages">
+      <mxGeometry x="15" y="195" width="245" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe-stats" value="Statistics.tsx&#xa;stats table + quarantine section" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#6c8ebf;" vertex="1" parent="fe-pages">
+      <mxGeometry x="15" y="270" width="245" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- State / API sub-column -->
+    <mxCell id="fe-store" value="store.ts&#xa;pendingFiles | analysisResult&#xa;currentGraph | quarantinedEntries" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="fe">
+      <mxGeometry x="330" y="130" width="280" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe-api" value="api/analysis.ts&#xa;analyzeFilesStreaming()&#xa;POST /api/analyze/stream&#xa;&#xa;api/client.ts (axios, :8000)" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="fe">
+      <mxGeometry x="330" y="240" width="280" height="105" as="geometry"/>
+    </mxCell>
+
+    <!-- UI Components sub-swimlane -->
+    <mxCell id="fe-components" value="UI Components" style="swimlane;startSize=28;fillColor=#edf4fe;strokeColor=#6c8ebf;" vertex="1" parent="fe">
+      <mxGeometry x="20" y="520" width="600" height="175" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe-cn" value="CustomNodes.tsx&#xa;RoundDefaultNode" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#6c8ebf;" vertex="1" parent="fe-components">
+      <mxGeometry x="15" y="40" width="165" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe-ce" value="CustomEdge.tsx&#xa;LabeledEdge" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#6c8ebf;" vertex="1" parent="fe-components">
+      <mxGeometry x="195" y="40" width="165" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe-sidebar" value="Sidebar.jsx&#xa;DnDContext.jsx" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#6c8ebf;" vertex="1" parent="fe-components">
+      <mxGeometry x="375" y="40" width="165" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe-xyflow" value="@xyflow/react v12" style="ellipse;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666;" vertex="1" parent="fe-components">
+      <mxGeometry x="195" y="110" width="175" height="40" as="geometry"/>
+    </mxCell>
+
+    <!-- ================================================================
+         API LAYER  (x=870..1230)  — 210px gap after frontend
+    ================================================================ -->
+    <mxCell id="api" value="API Layer (FastAPI)" style="swimlane;fontStyle=1;fontSize=13;startSize=35;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="870" y="200" width="360" height="390" as="geometry"/>
+    </mxCell>
+    <mxCell id="api-main" value="backend/main.py&#xa;FastAPI app + CORS Middleware" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#82b366;" vertex="1" parent="api">
+      <mxGeometry x="30" y="55" width="300" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="api-router" value="routers/analysis.py&#xa;POST /api/analyze&#xa;POST /api/analyze/stream (SSE)" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="api">
+      <mxGeometry x="30" y="135" width="300" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="api-schemas" value="backend/schemas.py&#xa;NodeSchema | EdgeSchema&#xa;QuarantinedEntrySchema&#xa;SuspiciousFileSchema&#xa;AnalysisResponse" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#82b366;" vertex="1" parent="api">
+      <mxGeometry x="30" y="225" width="300" height="130" as="geometry"/>
+    </mxCell>
+
+    <!-- ================================================================
+         BACKEND PROCESSING  (x=1390..2140)  — 160px gap after API
+    ================================================================ -->
+    <mxCell id="proc" value="Backend Processing (Python)" style="swimlane;fontStyle=1;fontSize=13;startSize=35;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="1390" y="60" width="760" height="820" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="proc-file" value="File Reading Pipeline" style="swimlane;startSize=28;fillColor=#fffde7;strokeColor=#d6b656;" vertex="1" parent="proc">
+      <mxGeometry x="20" y="50" width="340" height="320" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-reader" value="JsonFileReadingStrategy&#xa;readFile(path) → JsonFileWrapper" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;" vertex="1" parent="proc-file">
+      <mxGeometry x="15" y="40" width="310" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-wrapper" value="JsonFileWrapper&#xa;list[dict[str, str]]" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;" vertex="1" parent="proc-file">
+      <mxGeometry x="15" y="120" width="310" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-parser" value="JsonLogParsingStrategy&#xa;createLogFile(wrapper) → LogFile" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;" vertex="1" parent="proc-file">
+      <mxGeometry x="15" y="195" width="310" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-logfile" value="StandardLogFile&#xa;getStateTransitionInfoList()" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;" vertex="1" parent="proc-file">
+      <mxGeometry x="15" y="268" width="310" height="42" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="proc-stats" value="Statistics Pipeline  (utils/statistics.py)" style="swimlane;startSize=28;fillColor=#fffde7;strokeColor=#d6b656;" vertex="1" parent="proc">
+      <mxGeometry x="20" y="405" width="340" height="380" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-calcstats" value="calculateStatistics()&#xa;groups entries by (from_state, to_state)" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="proc-stats">
+      <mxGeometry x="15" y="40" width="310" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-stsstats" value="StdStateTransitionStatistics&#xa;avg | median | probability | distribution" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;" vertex="1" parent="proc-stats">
+      <mxGeometry x="15" y="120" width="310" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-qentry" value="QuarantinedEntry&#xa;fromState | toState&#xa;sojournTime | outlierScore" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="proc-stats">
+      <mxGeometry x="15" y="200" width="310" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-dist" value="find_distribution()&#xa;Distribution: NORMAL | EXP | GAMMA | LOGNORMAL" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;" vertex="1" parent="proc-stats">
+      <mxGeometry x="15" y="285" width="310" height="60" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="proc-outlier" value="Outlier Detection  (utils/outlier_detection.py)" style="swimlane;startSize=28;fillColor=#fffde7;strokeColor=#d6b656;" vertex="1" parent="proc">
+      <mxGeometry x="385" y="50" width="350" height="490" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-ods" value="detect_outliers_with_scores()&#xa;→ (is_outlier[], scores[0..1])" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="proc-outlier">
+      <mxGeometry x="15" y="40" width="320" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-aa" value="analyze_anomalies()&#xa;Adaptive Sampling LOF Ensemble&#xa;weight_vector | H scores | beta" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;" vertex="1" parent="proc-outlier">
+      <mxGeometry x="15" y="120" width="320" height="75" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-wb" value="calc_WB(score)&#xa;weight update  θ=0.2  α=0.2" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#d6b656;" vertex="1" parent="proc-outlier">
+      <mxGeometry x="15" y="215" width="320" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-lof" value="LocalOutlierFactor&#xa;(sklearn.neighbors)" style="ellipse;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666;" vertex="1" parent="proc-outlier">
+      <mxGeometry x="75" y="300" width="195" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc-threshold" value="OUTLIER_THRESHOLD = 0.7     MIN_SAMPLES = 4" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=2;" vertex="1" parent="proc-outlier">
+      <mxGeometry x="15" y="380" width="320" height="40" as="geometry"/>
+    </mxCell>
+
+    <!-- ================================================================
+         DOMAIN MODEL  (y=960)
+    ================================================================ -->
+    <mxCell id="dm" value="Domain Model — Strategy Pattern  (src/interfaces/ + classes/)" style="swimlane;fontStyle=1;fontSize=13;startSize=35;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="960" width="2130" height="310" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="dm-ifaces" value="src/interfaces/  (Abstract)" style="swimlane;startSize=28;fillColor=#f0eaf4;strokeColor=#9673a6;" vertex="1" parent="dm">
+      <mxGeometry x="15" y="48" width="1020" height="235" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-i-state" value="«interface» State&#xa;getName() | __eq__ | __hash__" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-ifaces">
+      <mxGeometry x="10" y="38" width="200" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-i-sti" value="«interface» StateTransitionInfo&#xa;getFromState() | getToState()&#xa;getSojournTime()" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-ifaces">
+      <mxGeometry x="225" y="38" width="210" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-i-ststat" value="«interface» StateTransitionStatistics&#xa;getSojournTimes() | getProbability()&#xa;getSojournAverage() | getSojournMedian()" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-ifaces">
+      <mxGeometry x="450" y="38" width="255" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-i-frs" value="«interface» FileReadingStrategy&#xa;readFile(path) → FileWrapper" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-ifaces">
+      <mxGeometry x="720" y="38" width="285" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-i-fw" value="«interface» FileWrapper&#xa;getObjectList()" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-ifaces">
+      <mxGeometry x="10" y="148" width="200" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-i-lf" value="«interface» LogFile&#xa;getStateTransitionInfoList()" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-ifaces">
+      <mxGeometry x="225" y="148" width="210" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-i-lps" value="«interface» LogParsingStrategy&#xa;createLogFile(FileWrapper) → LogFile" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-ifaces">
+      <mxGeometry x="450" y="148" width="255" height="60" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="dm-impls" value="classes/  (Concrete)" style="swimlane;startSize=28;fillColor=#f0eaf4;strokeColor=#9673a6;" vertex="1" parent="dm">
+      <mxGeometry x="1050" y="48" width="1065" height="235" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-c-ss" value="StandardState&#xa;implements State" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-impls">
+      <mxGeometry x="10" y="38" width="190" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-c-sti" value="StandardStateTransitionInfo&#xa;implements StateTransitionInfo" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-impls">
+      <mxGeometry x="215" y="38" width="225" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-c-ststat" value="StdStateTransitionStatistics&#xa;implements StateTransitionStatistics" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-impls">
+      <mxGeometry x="455" y="38" width="240" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-c-jfrs" value="JsonFileReadingStrategy&#xa;implements FileReadingStrategy" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-impls">
+      <mxGeometry x="710" y="38" width="340" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-c-jfw" value="JsonFileWrapper&#xa;implements FileWrapper" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-impls">
+      <mxGeometry x="10" y="148" width="190" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-c-slf" value="StandardLogFile&#xa;implements LogFile" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-impls">
+      <mxGeometry x="215" y="148" width="225" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="dm-c-jlps" value="JsonLogParsingStrategy&#xa;implements LogParsingStrategy" style="rounded=1;whiteSpace=wrap;fillColor=#fff;strokeColor=#9673a6;" vertex="1" parent="dm-impls">
+      <mxGeometry x="455" y="148" width="240" height="60" as="geometry"/>
+    </mxCell>
+
+    <!-- ================================================================
+         DATA FLOW EDGES
+         Tinted bg matched to arrow colour; no border box; bold 12pt
+    ================================================================ -->
+
+    <!-- Page navigation (dashed, blue) -->
+    <mxCell id="e-home-loading" value="① navigate" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;fontColor=#1e3a5f;labelBackgroundColor=#e8f0fe;" edge="1" parent="1" source="fe-home" target="fe-loading">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-loading-flow" value="③ navigate" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;fontColor=#1e3a5f;labelBackgroundColor=#e8f0fe;" edge="1" parent="1" source="fe-loading" target="fe-flow">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-flow-stats" value="navigate" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;fontColor=#1e3a5f;labelBackgroundColor=#e8f0fe;" edge="1" parent="1" source="fe-flow" target="fe-stats">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Loading → api/analysis.ts (amber) -->
+    <mxCell id="e-loading-api" value="② analyzeFilesStreaming()" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;fontSize=12;fontStyle=1;fontColor=#5a3e00;labelBackgroundColor=#fff3cd;" edge="1" parent="1" source="fe-loading" target="fe-api">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- api/analysis.ts → FastAPI router — crosses gap, label sits in 210px corridor -->
+    <mxCell id="e-api-router" value="POST /api/analyze/stream" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;fontSize=12;fontStyle=1;fontColor=#1a3d1a;labelBackgroundColor=#d5f0d5;" edge="1" parent="1" source="fe-api" target="api-router">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- FastAPI router → file reader — crosses gap, label sits in 160px corridor -->
+    <mxCell id="e-api-reader" value="for each uploaded file" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;fontSize=12;fontStyle=1;fontColor=#4a3800;labelBackgroundColor=#fff8dc;" edge="1" parent="1" source="api-router" target="proc-reader">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- File pipeline internal (unlabelled) -->
+    <mxCell id="e-reader-wrapper" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;" edge="1" parent="1" source="proc-reader" target="proc-wrapper">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-wrapper-parser" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;" edge="1" parent="1" source="proc-wrapper" target="proc-parser">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-parser-logfile" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;" edge="1" parent="1" source="proc-parser" target="proc-logfile">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- logfile → calculateStatistics -->
+    <mxCell id="e-logfile-calcstats" value="StateTransitionInfo list" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;fontSize=12;fontStyle=1;fontColor=#4a3800;labelBackgroundColor=#fff8dc;" edge="1" parent="1" source="proc-logfile" target="proc-calcstats">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- calculateStatistics → outlier detection -->
+    <mxCell id="e-calcstats-ods" value="sojourn times per (from, to)" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;fontSize=12;fontStyle=1;fontColor=#4a3800;labelBackgroundColor=#fff8dc;" edge="1" parent="1" source="proc-calcstats" target="proc-ods">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Outlier detection internals (unlabelled) -->
+    <mxCell id="e-ods-aa" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;" edge="1" parent="1" source="proc-ods" target="proc-aa">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-aa-wb" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;" edge="1" parent="1" source="proc-aa" target="proc-wb">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-aa-lof" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;" edge="1" parent="1" source="proc-aa" target="proc-lof">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- calculateStatistics → API schemas — crosses gap -->
+    <mxCell id="e-calcstats-schemas" value="stats + quarantined" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;fontSize=12;fontStyle=1;fontColor=#1a3d1a;labelBackgroundColor=#d5f0d5;" edge="1" parent="1" source="proc-calcstats" target="api-schemas">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- API schemas → fe-api — crosses gap -->
+    <mxCell id="e-schemas-feapi" value="AnalysisResponse (JSON)" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;fontSize=12;fontStyle=1;fontColor=#5a3e00;labelBackgroundColor=#fff3cd;" edge="1" parent="1" source="api-schemas" target="fe-api">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- fe-api → store (amber) -->
+    <mxCell id="e-feapi-store" value="setAnalysisResult()" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;fontSize=12;fontStyle=1;fontColor=#5a3e00;labelBackgroundColor=#fff3cd;" edge="1" parent="1" source="fe-api" target="fe-store">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- store → Flow and Statistics (blue dashed) -->
+    <mxCell id="e-store-flow" value="getAnalysisResult()" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;fontColor=#1e3a5f;labelBackgroundColor=#e8f0fe;" edge="1" parent="1" source="fe-store" target="fe-flow">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-store-stats" value="getQuarantinedEntries()" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;fontColor=#1e3a5f;labelBackgroundColor=#e8f0fe;" edge="1" parent="1" source="fe-store" target="fe-stats">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+  </root>
+</mxGraphModel>

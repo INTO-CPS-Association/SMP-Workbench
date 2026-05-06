@@ -22,5 +22,6 @@ class JsonFileReadingStrategy(FileReadingStrategy):
                         continue  # skip non-JSON lines (e.g. "The logger is now ready")
 
             return JsonFileWrapper(results)
+        
         else:
-            raise(OSError("File did not end with .json"))
+            raise OSError("File did not end with .json")
