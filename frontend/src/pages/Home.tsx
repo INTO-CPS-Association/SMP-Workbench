@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { store } from "../store";
 import styles from "./Home.module.css";
+import ThemeToggle from "../components/ThemeToggle";
 
 function Home() {
   const navigate = useNavigate();
@@ -33,6 +34,9 @@ function Home() {
 
   return (
     <div className={styles.page}>
+      <div style={{ position: 'absolute', top: 20, right: 24 }}>
+        <ThemeToggle />
+      </div>
       <header className={styles.header}>
         <h1 className={styles.title}>SMP Visualizer</h1>
         <p className={styles.subtitle}>

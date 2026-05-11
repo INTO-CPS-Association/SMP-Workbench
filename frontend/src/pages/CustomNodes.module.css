@@ -17,9 +17,9 @@
 }
 
 .default {
-  border-color: #3b82f6;
-  color: #1d6ef5;
-  background: rgba(59, 130, 246, 0.10);
+  border-color: var(--node-border);
+  color: var(--node-text);
+  background: var(--node-bg);
   font-weight: 600;
 }
 

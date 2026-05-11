@@ -24,6 +24,14 @@ class QuarantinedEntrySchema(BaseModel):
     outlierScore: float
 
 
+class SuspiciousTransitionEntry(BaseModel):
+    fromState: str
+    toState: str
+    sojournTime: float
+    outlierScore: float = 0.0
+    isOutlier: bool = False
+
+
 class SuspiciousFileSchema(BaseModel):
     filename: str
     transition: str
@@ -32,6 +40,7 @@ class SuspiciousFileSchema(BaseModel):
     count: int
     avgCount: float
     outlierScore: float
+    transitions: List[SuspiciousTransitionEntry] = []
 
 
 class AnalysisResponse(BaseModel):
@@ -39,3 +48,7 @@ class AnalysisResponse(BaseModel):
     edges: List[EdgeSchema]
     quarantined: List[QuarantinedEntrySchema]
     suspiciousFiles: List[SuspiciousFileSchema] = []
+
+
+class SojournOutliersRequest(BaseModel):
+    transitions: List[SuspiciousTransitionEntry]

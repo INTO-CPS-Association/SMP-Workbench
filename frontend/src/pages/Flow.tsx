@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -12,6 +12,7 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import type { Connection, Node, Edge } from '@xyflow/react';
+import ThemeToggle from '../components/ThemeToggle';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import '@xyflow/react/dist/style.css';
@@ -32,7 +33,7 @@ const edgeTypes = { labeled: LabeledEdge };
 const DEFAULT_EDGE_OPTIONS = {
   type: 'labeled',
   markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-  style: { strokeWidth: 1.5, stroke: 'var(--accent)', opacity: 0.85 },
+  style: { strokeWidth: 1.5, stroke: 'var(--edge-stroke)', opacity: 0.85 },
   data: { probability: 0.0, avgSojournTime: 0.0 },
 };
 
@@ -170,6 +171,22 @@ const DnDFlow = () => {
     navigate('/statistics', { state: { nodes, edges } });
   }, [nodes, edges, navigate]);
 
+  // Detect source states whose outgoing probabilities don't sum to [0.99, 1.0]
+  const invalidSources = useMemo(() => {
+    const sums: Record<string, number> = {};
+    for (const edge of edges) {
+      const p = (edge.data?.probability ?? 0) as number;
+      sums[edge.source] = (sums[edge.source] ?? 0) + p;
+    }
+    return Object.entries(sums)
+      .filter(([_, sum]) => sum > 0 && (sum > 1.0 || sum < 0.99))
+      .map(([src, sum]) => ({
+        source: src,
+        label: (nodes.find(n => n.id === src)?.data?.label as string) ?? src,
+        sum,
+      }));
+  }, [edges, nodes]);
+
   return (
     <div className="dndflow">
       <div
@@ -178,6 +195,28 @@ const DnDFlow = () => {
         style={{ width: '100vw', height: '100vh', position: 'relative' }}
         onDragLeave={onDragLeave}
       >
+        <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}>
+          <ThemeToggle />
+        </div>
+
+        {invalidSources.length > 0 && (
+          <div style={{
+            position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
+            {invalidSources.map(({ source: src, label, sum }) => (
+              <div key={src} style={{
+                background: '#fefce8', border: '1px solid #fbbf24', borderRadius: 8,
+                padding: '7px 14px', fontSize: 12, fontWeight: 500,
+                color: '#92400e', boxShadow: '0 2px 8px rgba(251,191,36,0.25)',
+                whiteSpace: 'nowrap',
+              }}>
+                ⚠ &nbsp;Probabilities from &ldquo;{label}&rdquo; sum to {sum.toFixed(4)} — {sum > 1.0 ? 'too high' : 'too low'} (must equal 1.00)
+              </div>
+            ))}
+          </div>
+        )}
+
         {ghostPos && (
           <div style={{
             position: 'absolute',

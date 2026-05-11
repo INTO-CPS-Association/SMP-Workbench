@@ -1,103 +1,144 @@
 import numpy as np
-from scipy import stats
-import pandas as pd
-import matplotlib.pyplot as plt
+from dataclasses import dataclass
 from sklearn.neighbors import LocalOutlierFactor
 
-# Outlier analysis function for 1D outlier analysis
-# Uses the LOF (Local Outlier Factor) algorithm as bas
-# D stands for dataset
-# @0: List of integers
-# Ret: List of integers with outlier scores for each element in D
-theta = 0.2 # Threshold: [0,1]
-alpha = 0.2
-
-
-def analyze_anomalies(input: list[int], iter_count: int) -> list[float]:
-    # Initialize the weight vector
-    D = np.array(input).reshape(-1,1)
-    weight_vector = [1/len(D) for x in range(len(D))]
-    N = 2*len(D)
-    H = [0.0]*len(D)
-    beta = 0.0
-    tau = 0.95
-
-    # for t in T
-    for t in range(iter_count):
-    
-        # 1. Obtain the probability distribution for sampling:
-        p_t = [x / sum(weight_vector) for x in weight_vector]
-        #print("p_t", p_t)
-
-        # 2. Draw N observations from D (dataset) using p_t, remove duplicates
-        indices = np.random.choice(len(D), size=N, p=p_t, replace=True)
-        # Remove duplicates
-        indices = list(set(indices))
-        D_t = D[indices]
-
-        # Skip iteration if all subsampled values are identical — LOF is undefined
-        _, dup_counts = np.unique(D_t, return_counts=True)
-        if len(dup_counts) < 2:
-            continue
-
-        # k must be >= the most-common value's count so that every point's
-        # neighbourhood extends past the block of duplicates, preventing
-        # zero reachability distances that break the LOF density ratio.
-        k = min(max(3, int(dup_counts.max())), len(D_t) - 1)
-        if k < 1:
-            continue
-        lof = LocalOutlierFactor(n_neighbors=k)
-
-        # Fit
-        lof.fit(D_t)
-        score_t = -lof.negative_outlier_factor_
-
-        # Normalize score_t
-        rng = score_t.max() - score_t.min()
-        score_t = (score_t - score_t.min()) / rng if rng > 0 else np.zeros_like(score_t)
-
-        
-        # Count number of scores that are greater than tau threshold
-        a_t = sum(1 for score in score_t if score > tau)
-
-        # Calculate beta
-        beta = 1 - (a_t/len(D_t))
-
-        # Sum final score and update weights
-        for i, index in enumerate(indices):
-            H[index] += beta * score_t[i]
-            WB = calc_WB(score_t[i])
-            weight_vector[index] = (1-alpha) * weight_vector[index] + alpha*WB
-
-    return H
-
-def calc_WB(score):
-    if score < theta:
-        return score/theta
-    else:
-        return (1-score)/(1-theta)
+theta = 0.2  # Weight-boost threshold: scores below this are boosted; above it are penalised
+alpha = 0.2  # Learning rate for the weight vector update
 
 OUTLIER_THRESHOLD = 0.7
 _MIN_SAMPLES = 4  # LOF with n_neighbors=3 needs at least 4 samples
 
 
-def detect_outliers_with_scores(sojourn_times: list, iter_count: int = 20) -> tuple[list[bool], list[float]]:
-    """Normalize H scores to [0,1] and flag entries above OUTLIER_THRESHOLD as outliers."""
+# ---------------------------------------------------------------------------
+# Data container
+# ---------------------------------------------------------------------------
+
+@dataclass
+class OutlierResult:
+    """Outcome of running the adaptive LOF ensemble on a sequence of values."""
+    # True for each entry whose normalised score exceeds OUTLIER_THRESHOLD
+    is_outlier: list
+    # Normalised anomaly score in [0, 1] for every entry in the input
+    scores: list
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def calc_WB(score: float) -> float:
+    """Computes the weight-boost value for a single LOF score.
+
+    Points well below the outlier boundary (score < theta) receive a weight
+    proportional to their score, keeping genuinely normal points sampled
+    frequently.  Points above theta are down-weighted so the ensemble does not
+    over-sample known outliers in later iterations.
+    """
+    if score < theta:
+        return score / theta
+    return (1 - score) / (1 - theta)
+
+
+def _safe_lof_k(D_t: np.ndarray) -> int:
+    """Returns a safe n_neighbors value for LOF on the subsample D_t.
+
+    k must be at least as large as the most common duplicate count so that
+    every point's neighbourhood extends past the block of identical values,
+    preventing zero reachability distances that break the LOF density ratio.
+    Returns 0 if a valid k cannot be found.
+    """
+    _, dup_counts = np.unique(D_t, return_counts=True)
+    if len(dup_counts) < 2:
+        # All values identical — LOF is undefined for this subsample
+        return 0
+    k = min(max(3, int(dup_counts.max())), len(D_t) - 1)
+    return k if k >= 1 else 0
+
+
+def _normalise(arr: np.ndarray) -> np.ndarray:
+    """Linearly rescales arr to [0, 1]; returns a zero array if all values are equal."""
+    rng = arr.max() - arr.min()
+    return (arr - arr.min()) / rng if rng > 0 else np.zeros_like(arr)
+
+
+# ---------------------------------------------------------------------------
+# Core algorithm
+# ---------------------------------------------------------------------------
+
+def analyze_anomalies(input: list[int], iter_count: int) -> list[float]:
+    """Runs the adaptive sampling LOF ensemble and returns a raw anomaly score per entry.
+
+    Each iteration draws a weighted subsample, scores it with LOF, then updates
+    the per-entry weight so that points already identified as anomalous are sampled
+    less aggressively in the next round.  The accumulated score H[i] reflects how
+    consistently entry i was flagged across all iterations.
+    """
+    D = np.array(input).reshape(-1, 1)
+    n = len(D)
+    weight_vector = [1 / n] * n   # Start with a uniform sampling distribution
+    N = 2 * n                      # Subsample size — twice the dataset length
+    H = [0.0] * n                  # Accumulated anomaly scores, one per entry
+    tau = 0.95                     # Score threshold for counting high-confidence outliers
+
+    for _ in range(iter_count):
+        # Normalise weights to a probability distribution
+        p_t = [w / sum(weight_vector) for w in weight_vector]
+
+        # Draw a weighted subsample and remove duplicates
+        indices = list(set(np.random.choice(n, size=N, p=p_t, replace=True)))
+        D_t = D[indices]
+
+        k = _safe_lof_k(D_t)
+        if k == 0:
+            continue
+
+        lof = LocalOutlierFactor(n_neighbors=k)
+        lof.fit(D_t)
+        score_t = _normalise(-lof.negative_outlier_factor_)
+
+        # beta dampens the score contribution when many points look like outliers,
+        # reducing noise from degenerate subsamples
+        a_t = sum(1 for s in score_t if s > tau)
+        beta = 1 - (a_t / len(D_t))
+
+        for i, index in enumerate(indices):
+            H[index] += beta * score_t[i]
+            weight_vector[index] = (1 - alpha) * weight_vector[index] + alpha * calc_WB(score_t[i])
+
+    return H
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def detect_outliers_with_scores(sojourn_times: list, iter_count: int = 20) -> OutlierResult:
+    """Runs the ensemble on sojourn_times and returns flags and scores for every entry.
+
+    Entries with fewer than _MIN_SAMPLES values are returned as all-clean because
+    LOF requires at least n_neighbors + 1 points to produce meaningful scores.
+    """
     n = len(sojourn_times)
     if n < _MIN_SAMPLES:
-        return [False] * n, [0.0] * n
+        return OutlierResult(is_outlier=[False] * n, scores=[0.0] * n)
+
     H = analyze_anomalies(sojourn_times, iter_count)
-    H_arr = np.array(H, dtype=float)
-    rng = H_arr.max() - H_arr.min()
-    H_norm = (H_arr - H_arr.min()) / rng if rng > 0 else np.zeros_like(H_arr)
-    is_outlier = [float(s) > OUTLIER_THRESHOLD for s in H_norm]
-    return is_outlier, [float(s) for s in H_norm]
+    H_norm = _normalise(np.array(H, dtype=float))
+    return OutlierResult(
+        is_outlier=[float(s) > OUTLIER_THRESHOLD for s in H_norm],
+        scores=[float(s) for s in H_norm],
+    )
 
 
 def detect_suspicious_files(
     file_counts: dict[str, dict[tuple[str, str], int]],
 ) -> list[dict]:
-    """Flag files whose count of a (from, to) transition is an outlier-high value across all files."""
+    """Flags files whose count of a (from, to) transition is anomalously high across all files.
+
+    For each transition pair, a count-per-file vector is built and scored with the
+    same outlier detection used for sojourn times.  Only files with a count above
+    the average are flagged — unusually low counts are not considered suspicious.
+    """
     if len(file_counts) < _MIN_SAMPLES:
         return []
 
@@ -109,9 +150,9 @@ def detect_suspicious_files(
     flagged: list[dict] = []
     for pair in sorted(all_pairs):
         counts_vec = [file_counts[fn].get(pair, 0) for fn in filenames]
-        is_outlier, scores = detect_outliers_with_scores(counts_vec)
+        result = detect_outliers_with_scores(counts_vec)
         avg = sum(counts_vec) / len(counts_vec)
-        for fn, count, outlier, score in zip(filenames, counts_vec, is_outlier, scores):
+        for fn, count, outlier, score in zip(filenames, counts_vec, result.is_outlier, result.scores):
             if outlier and count > avg:
                 flagged.append({
                     "filename": fn,
@@ -127,5 +168,5 @@ def detect_suspicious_files(
 
 
 if __name__ == '__main__':
-    res = analyze_anomalies([1,2,3,5,6,7,13,51], 20)
+    res = analyze_anomalies([1, 2, 3, 5, 6, 7, 13, 51], 20)
     print("res", res)

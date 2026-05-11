@@ -12,6 +12,12 @@
   margin-bottom: 40px;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .navBtn {
   padding: 8px 20px;
   border: 1px solid var(--border);
@@ -159,6 +165,35 @@ tr:hover td {
   font-size: 12px;
 }
 
+/* Continuation rows within the same quarantined file group */
+.fileGroupContinuation td {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.loadingBadge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--sans, sans-serif);
+  letter-spacing: 0.3px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  vertical-align: middle;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loadingBadge {
+    background: rgba(99, 102, 241, 0.18);
+    color: #818cf8;
+    border-color: rgba(99, 102, 241, 0.35);
+  }
+}
+
 .suspiciousCount {
   font-weight: 700;
   color: #b45309;
@@ -173,6 +208,10 @@ tr:hover td {
 /* ── Quarantine section ────────────────────────────────────────── */
 
 .quarantineSection {
+  margin-top: 48px;
+}
+
+.fileOutliersSection {
   margin-top: 48px;
 }
 

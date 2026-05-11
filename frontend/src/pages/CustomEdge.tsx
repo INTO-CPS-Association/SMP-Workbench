@@ -4,6 +4,7 @@ import {
   EdgeLabelRenderer,
   getBezierPath,
   useNodes,
+  useEdges,
   useReactFlow,
   Position,
 } from '@xyflow/react';
@@ -30,9 +31,16 @@ function circleEdgePoint(cx: number, cy: number, toX: number, toY: number): [num
 export function LabeledEdge({ id, source, target, data, markerEnd, style }: EdgeProps) {
   const { setEdges } = useReactFlow();
   const nodes = useNodes<Node>();
+  const allEdges = useEdges();
   const [editingField, setEditingField] = useState<'probability' | 'avgSojournTime' | null>(null);
   const [draft, setDraft] = useState('');
   const [hovered, setHovered] = useState(false);
+
+  // Detect whether outgoing probabilities from this source node are out of range
+  const sourceSum = allEdges
+    .filter(e => e.source === source)
+    .reduce((sum, e) => sum + ((e.data?.probability ?? 0) as number), 0);
+  const isSourceInvalid = sourceSum > 0 && (sourceSum > 1.0 || sourceSum < 0.99);
 
   const sourceNode = nodes.find(n => n.id === source);
   const targetNode = nodes.find(n => n.id === target);
@@ -133,8 +141,12 @@ export function LabeledEdge({ id, source, target, data, markerEnd, style }: Edge
           markerEnd={markerEnd}
           style={{
             ...style,
-            stroke:  hovered ? '#facc15' : (style as React.CSSProperties | undefined)?.stroke,
-            filter:  hovered ? 'drop-shadow(0 0 8px #facc15) drop-shadow(0 0 16px #fbbf24)' : undefined,
+            stroke: isSourceInvalid
+              ? '#ef4444'
+              : hovered ? '#facc15' : 'var(--edge-stroke)',
+            filter: isSourceInvalid
+              ? 'drop-shadow(0 0 5px rgba(239,68,68,0.55))'
+              : hovered ? 'drop-shadow(0 0 8px #facc15) drop-shadow(0 0 16px #fbbf24)' : undefined,
             transition: 'stroke 0.15s, filter 0.15s',
           }}
         />

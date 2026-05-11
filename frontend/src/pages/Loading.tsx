@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { store } from "../store";
 import { analyzeFilesStreaming } from "../api/analysis";
 import styles from "./Loading.module.css";
+import ThemeToggle from "../components/ThemeToggle";
 
 function Loading() {
   const navigate = useNavigate();
@@ -34,6 +35,9 @@ function Loading() {
 
   return (
     <div className={styles.loading}>
+      <div style={{ position: 'absolute', top: 20, right: 24 }}>
+        <ThemeToggle />
+      </div>
       <h1 className={styles.title}>{error ? "Error" : "Analyzing"}</h1>
 
       {!error && (

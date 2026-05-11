@@ -22,6 +22,14 @@ export interface QuarantinedEntry {
   outlierScore: number;
 }
 
+export interface SuspiciousTransition {
+  fromState: string;
+  toState: string;
+  sojournTime: number;
+  outlierScore: number;
+  isOutlier: boolean;
+}
+
 export interface SuspiciousFile {
   filename: string;
   transition: string;
@@ -30,6 +38,7 @@ export interface SuspiciousFile {
   count: number;
   avgCount: number;
   outlierScore: number;
+  transitions: SuspiciousTransition[];
 }
 
 export interface AnalysisResult {
@@ -37,6 +46,16 @@ export interface AnalysisResult {
   edges: AnalysisEdge[];
   quarantined: QuarantinedEntry[];
   suspiciousFiles: SuspiciousFile[];
+}
+
+export async function analyzeSojournOutliers(
+  transitions: SuspiciousTransition[],
+): Promise<SuspiciousTransition[]> {
+  const response = await client.post<SuspiciousTransition[]>(
+    '/api/analyze/sojourn-outliers',
+    { transitions },
+  );
+  return response.data;
 }
 
 export async function analyzeFiles(files: FileList): Promise<AnalysisResult> {
