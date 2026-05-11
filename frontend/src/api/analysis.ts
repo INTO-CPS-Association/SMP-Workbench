@@ -58,13 +58,6 @@ export async function analyzeSojournOutliers(
   return response.data;
 }
 
-export async function analyzeFiles(files: FileList): Promise<AnalysisResult> {
-  const formData = new FormData();
-  Array.from(files).forEach((file) => formData.append('files', file));
-  const response = await client.post<AnalysisResult>('/api/analyze', formData);
-  return response.data;
-}
-
 export async function analyzeFilesStreaming(
   files: FileList,
   onProgress: (percent: number, message: string) => void,

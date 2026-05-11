@@ -133,8 +133,7 @@ p {
   margin: 0;
 }
 
-code,
-.counter {
+code {
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
@@ -225,12 +224,6 @@ body {
   background: var(--node-bg);
 }
 
-.dndflow .dndnode.output {
-  border-color: #ff0072;
-  color: #ff0072;
-  background: rgba(255, 0, 114, 0.06);
-}
- 
 .dndflow .reactflow-wrapper {
   flex-grow: 1;
   height: 100%;
