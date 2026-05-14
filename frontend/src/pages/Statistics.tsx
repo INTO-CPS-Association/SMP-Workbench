@@ -25,7 +25,7 @@ function computeEffectiveStats(
   edges: Edge[],
   quarantined: QuarantinedEntry[],
   included: Set<number>,
-  includedFiles: Set<string>,
+  includedFilePairs: Set<string>,
   fileOutlierData: Map<string, SuspiciousTransition[]>,
   includedFileEntries: Set<string>,
 ): Map<string, EffectiveStat> {
@@ -35,21 +35,20 @@ function computeEffectiveStats(
     sojournByEdge.set(edge.id, [...times]);
   }
 
-  const anyIncluded = included.size > 0 || includedFiles.size > 0;
+  const anyIncluded = included.size > 0 || includedFilePairs.size > 0;
 
-  // Merge included quarantined entries
   for (const [i, q] of quarantined.entries()) {
     if (!included.has(i)) continue;
     const times = sojournByEdge.get(`${q.fromState}-${q.toState}`);
     if (times) times.push(q.sojournTime);
   }
 
-  // Merge transitions from re-included suspicious files.
-  // Sojourn-time outliers within those files are skipped unless individually checked.
+  // Only merge transitions whose (filename, from, to) pair is individually selected.
   for (const [filename, transitions] of fileOutlierData) {
-    if (!includedFiles.has(filename)) continue;
     for (const [tIdx, t] of transitions.entries()) {
-      if (t.isOutlier && !includedFileEntries.has(`${filename}::${tIdx}`)) continue;
+      const pairKey = `${filename}::${t.fromState}::${t.toState}`;
+      if (!includedFilePairs.has(pairKey)) continue;
+      if (t.isOutlier && !includedFileEntries.has(`${pairKey}::${tIdx}`)) continue;
       const times = sojournByEdge.get(`${t.fromState}-${t.toState}`);
       if (times !== undefined) times.push(t.sojournTime);
     }
@@ -84,12 +83,17 @@ export default function Statistics() {
   const quarantined = store.getQuarantinedEntries();
   const suspiciousFiles = store.getSuspiciousFiles();
 
+  const handleReset = () => {
+    store.reset();
+    navigate('/');
+  };
+
   const [included, setIncluded] = useState<Set<number>>(new Set());
-  const [includedFiles, setIncludedFiles] = useState<Set<string>>(new Set());
+  // Keys: "filename::fromState::toState" — one per suspicious transition pair
+  const [includedFilePairs, setIncludedFilePairs] = useState<Set<string>>(new Set());
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
-  // Scored transitions per re-included file, populated after the backend call returns
   const [fileOutlierData, setFileOutlierData] = useState<Map<string, SuspiciousTransition[]>>(new Map());
-  // "filename::transitionIndex" keys for individual outlier entries the user wants to include
+  // Keys: "filename::fromState::toState::transitionIndex"
   const [includedFileEntries, setIncludedFileEntries] = useState<Set<string>>(new Set());
 
   const toggleEntry = (idx: number) => {
@@ -100,34 +104,42 @@ export default function Statistics() {
     });
   };
 
-  const toggleFile = async (filename: string) => {
-    if (includedFiles.has(filename)) {
-      setIncludedFiles(prev => { const n = new Set(prev); n.delete(filename); return n; });
-      setFileOutlierData(prev => { const n = new Map(prev); n.delete(filename); return n; });
+  const scoreFile = async (filename: string) => {
+    setLoadingFiles(prev => new Set(prev).add(filename));
+    const sf = suspiciousFiles.find((f: SuspiciousFile) => f.filename === filename);
+    try {
+      const scored = sf ? await analyzeSojournOutliers(sf.transitions) : [];
+      setFileOutlierData(prev => new Map(prev).set(filename, scored));
+    } catch {
+      setFileOutlierData(prev => new Map(prev).set(filename, sf?.transitions ?? []));
+    } finally {
+      setLoadingFiles(prev => { const n = new Set(prev); n.delete(filename); return n; });
+    }
+  };
+
+  const toggleFilePair = (filename: string, fromState: string, toState: string) => {
+    const pairKey = `${filename}::${fromState}::${toState}`;
+    if (includedFilePairs.has(pairKey)) {
+      setIncludedFilePairs(prev => { const n = new Set(prev); n.delete(pairKey); return n; });
       setIncludedFileEntries(prev => {
         const n = new Set(prev);
-        for (const k of [...n]) if (k.startsWith(`${filename}::`)) n.delete(k);
+        for (const k of [...n]) if (k.startsWith(`${pairKey}::`)) n.delete(k);
         return n;
       });
+      const remainingPairs = [...includedFilePairs].filter(k => k !== pairKey && k.startsWith(`${filename}::`));
+      if (remainingPairs.length === 0) {
+        setFileOutlierData(prev => { const n = new Map(prev); n.delete(filename); return n; });
+      }
     } else {
-      setLoadingFiles(prev => new Set(prev).add(filename));
-      const sf = suspiciousFiles.find(f => f.filename === filename);
-      try {
-        const scored = sf ? await analyzeSojournOutliers(sf.transitions) : [];
-        setFileOutlierData(prev => new Map(prev).set(filename, scored));
-        setIncludedFiles(prev => new Set(prev).add(filename));
-      } catch {
-        // On error fall back to raw transitions without outlier scores
-        setFileOutlierData(prev => new Map(prev).set(filename, sf?.transitions ?? []));
-        setIncludedFiles(prev => new Set(prev).add(filename));
-      } finally {
-        setLoadingFiles(prev => { const n = new Set(prev); n.delete(filename); return n; });
+      setIncludedFilePairs(prev => new Set(prev).add(pairKey));
+      if (!fileOutlierData.has(filename) && !loadingFiles.has(filename)) {
+        scoreFile(filename);
       }
     }
   };
 
-  const toggleFileEntry = (filename: string, idx: number) => {
-    const key = `${filename}::${idx}`;
+  const toggleFileEntry = (pairKey: string, idx: number) => {
+    const key = `${pairKey}::${idx}`;
     setIncludedFileEntries(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
@@ -139,26 +151,37 @@ export default function Statistics() {
     () => [...new Set(suspiciousFiles.map((sf: SuspiciousFile) => sf.filename))],
     [suspiciousFiles],
   );
-  const allFilesSelected = uniqueSuspiciousFilenames.length > 0 &&
-    uniqueSuspiciousFilenames.every(fn => includedFiles.has(fn) || loadingFiles.has(fn));
-
-  const toggleAllFiles = () => {
-    if (allFilesSelected) {
-      setIncludedFiles(new Set());
-      setLoadingFiles(new Set());
-      setFileOutlierData(new Map());
-      setIncludedFileEntries(new Set());
-    } else {
-      uniqueSuspiciousFilenames
-        .filter(fn => !includedFiles.has(fn) && !loadingFiles.has(fn))
-        .forEach(fn => toggleFile(fn));
-    }
-  };
 
   const sortedSuspiciousFiles = useMemo(
     () => [...suspiciousFiles].sort((a: SuspiciousFile, b: SuspiciousFile) => a.filename.localeCompare(b.filename)),
     [suspiciousFiles],
   );
+
+  const allPairsSelected = sortedSuspiciousFiles.length > 0 &&
+    sortedSuspiciousFiles.every((sf: SuspiciousFile) =>
+      includedFilePairs.has(`${sf.filename}::${sf.fromState}::${sf.toState}`) || loadingFiles.has(sf.filename)
+    );
+
+  const toggleAllPairs = () => {
+    if (allPairsSelected) {
+      setIncludedFilePairs(new Set());
+      setFileOutlierData(new Map());
+      setIncludedFileEntries(new Set());
+      setLoadingFiles(new Set());
+    } else {
+      setIncludedFilePairs(prev => {
+        const n = new Set(prev);
+        sortedSuspiciousFiles.forEach((sf: SuspiciousFile) => n.add(`${sf.filename}::${sf.fromState}::${sf.toState}`));
+        return n;
+      });
+      const unscored = [...new Set(
+        sortedSuspiciousFiles
+          .filter((sf: SuspiciousFile) => !fileOutlierData.has(sf.filename) && !loadingFiles.has(sf.filename))
+          .map((sf: SuspiciousFile) => sf.filename)
+      )];
+      unscored.forEach(scoreFile);
+    }
+  };
 
   const allSelected = quarantined.length > 0 && included.size === quarantined.length;
   const toggleAll = () => {
@@ -166,31 +189,32 @@ export default function Statistics() {
   };
 
   const reIncludedFileOutliers = useMemo(() => {
-    const result: Array<{ filename: string; transitionIdx: number } & SuspiciousTransition> = [];
+    const result: Array<{ filename: string; pairKey: string; transitionIdx: number } & SuspiciousTransition> = [];
     for (const [filename, transitions] of fileOutlierData) {
-      if (!includedFiles.has(filename)) continue;
       transitions.forEach((t, idx) => {
-        if (t.isOutlier) result.push({ filename, transitionIdx: idx, ...t });
+        const pairKey = `${filename}::${t.fromState}::${t.toState}`;
+        if (!t.isOutlier || !includedFilePairs.has(pairKey)) return;
+        result.push({ filename, pairKey, transitionIdx: idx, ...t });
       });
     }
     return result;
-  }, [fileOutlierData, includedFiles]);
+  }, [fileOutlierData, includedFilePairs]);
 
   const allFileEntriesSelected = reIncludedFileOutliers.length > 0 &&
-    reIncludedFileOutliers.every(o => includedFileEntries.has(`${o.filename}::${o.transitionIdx}`));
+    reIncludedFileOutliers.every(o => includedFileEntries.has(`${o.pairKey}::${o.transitionIdx}`));
   const toggleAllFileEntries = () => {
     if (allFileEntriesSelected) {
       setIncludedFileEntries(new Set());
     } else {
-      setIncludedFileEntries(new Set(reIncludedFileOutliers.map(o => `${o.filename}::${o.transitionIdx}`)));
+      setIncludedFileEntries(new Set(reIncludedFileOutliers.map(o => `${o.pairKey}::${o.transitionIdx}`)));
     }
   };
 
   const effectiveStats = useMemo(
     () => (edges
-      ? computeEffectiveStats(edges, quarantined, included, includedFiles, fileOutlierData, includedFileEntries)
+      ? computeEffectiveStats(edges, quarantined, included, includedFilePairs, fileOutlierData, includedFileEntries)
       : new Map<string, EffectiveStat>()),
-    [included, includedFiles, fileOutlierData, includedFileEntries, edges, quarantined],
+    [included, includedFilePairs, fileOutlierData, includedFileEntries, edges, quarantined],
   );
 
   if (!edges || edges.length === 0) {
@@ -201,6 +225,7 @@ export default function Statistics() {
           <div className={styles.headerActions}>
             <ThemeToggle />
             <button className={styles.navBtn} onClick={() => navigate('/flow')}>Flow page</button>
+            <button className={`${styles.navBtn} ${styles.resetBtn}`} onClick={handleReset}>New Analysis</button>
           </div>
         </div>
         <p className={styles.empty}>No transition data available. Run an analysis first.</p>
@@ -227,6 +252,7 @@ export default function Statistics() {
         <div className={styles.headerActions}>
           <ThemeToggle />
           <button className={styles.navBtn} onClick={() => navigate('/flow')}>Flow page</button>
+          <button className={`${styles.navBtn} ${styles.resetBtn}`} onClick={handleReset}>New Analysis</button>
         </div>
       </div>
 
@@ -238,11 +264,11 @@ export default function Statistics() {
               <p className={styles.suspiciousDesc}>
                 {uniqueSuspiciousFilenames.length === 1 ? '1 file was' : `${uniqueSuspiciousFilenames.length} files were`} quarantined
                 for containing an anomalously high number of a particular transition.
-                Check files to re-include them — statistics update automatically.
+                Check individual transitions to re-include them — statistics update automatically.
               </p>
             </div>
-            <button className={styles.selectAllBtn} onClick={toggleAllFiles}>
-              {allFilesSelected ? 'Deselect all' : 'Select all'}
+            <button className={styles.selectAllBtn} onClick={toggleAllPairs}>
+              {allPairsSelected ? 'Deselect all' : 'Select all'}
             </button>
           </div>
           <div className={styles.tableWrapper}>
@@ -261,7 +287,8 @@ export default function Statistics() {
                 {sortedSuspiciousFiles.map((sf: SuspiciousFile, i: number) => {
                   const isFirstInGroup = i === 0 || sortedSuspiciousFiles[i - 1].filename !== sf.filename;
                   const isLoading = loadingFiles.has(sf.filename);
-                  const isIncluded = includedFiles.has(sf.filename);
+                  const pairKey = `${sf.filename}::${sf.fromState}::${sf.toState}`;
+                  const isIncluded = includedFilePairs.has(pairKey);
                   return (
                     <tr
                       key={i}
@@ -269,20 +296,18 @@ export default function Statistics() {
                         isIncluded ? styles.includedRow : '',
                         !isFirstInGroup ? styles.fileGroupContinuation : '',
                       ].filter(Boolean).join(' ') || undefined}
-                      onClick={() => !isLoading && toggleFile(sf.filename)}
+                      onClick={() => !isLoading && toggleFilePair(sf.filename, sf.fromState, sf.toState)}
                       style={{ cursor: isLoading ? 'wait' : 'pointer' }}
                     >
                       <td className={styles.checkTd}>
-                        {isFirstInGroup && (
-                          <input
-                            type="checkbox"
-                            checked={isIncluded}
-                            disabled={isLoading}
-                            onChange={() => toggleFile(sf.filename)}
-                            onClick={(e) => e.stopPropagation()}
-                            className={styles.checkbox}
-                          />
-                        )}
+                        <input
+                          type="checkbox"
+                          checked={isIncluded}
+                          disabled={isLoading}
+                          onChange={() => toggleFilePair(sf.filename, sf.fromState, sf.toState)}
+                          onClick={(e) => e.stopPropagation()}
+                          className={styles.checkbox}
+                        />
                       </td>
                       <td className={styles.suspiciousFilename}>
                         {isFirstInGroup && (
@@ -423,10 +448,10 @@ export default function Statistics() {
         <div className={styles.fileOutliersSection}>
           <div className={styles.quarantineHeader}>
             <div>
-              <h2 className={styles.quarantineTitle}>Outliers in Re-included Files</h2>
+              <h2 className={styles.quarantineTitle}>Outliers in Re-included Transitions</h2>
               <p className={styles.quarantineDesc}>
                 {reIncludedFileOutliers.length} {reIncludedFileOutliers.length === 1 ? 'entry was' : 'entries were'} flagged
-                as sojourn time outliers within the re-included files and excluded from the statistics above.
+                as sojourn time outliers within the re-included transitions and excluded from the statistics above.
                 Check entries to include them — values update automatically.
               </p>
             </div>
@@ -448,20 +473,20 @@ export default function Statistics() {
               </thead>
               <tbody>
                 {reIncludedFileOutliers.map((o, i) => {
-                  const key = `${o.filename}::${o.transitionIdx}`;
+                  const key = `${o.pairKey}::${o.transitionIdx}`;
                   const isIncluded = includedFileEntries.has(key);
                   return (
                     <tr
                       key={i}
                       className={isIncluded ? styles.includedRow : undefined}
-                      onClick={() => toggleFileEntry(o.filename, o.transitionIdx)}
+                      onClick={() => toggleFileEntry(o.pairKey, o.transitionIdx)}
                       style={{ cursor: 'pointer' }}
                     >
                       <td className={styles.checkTd}>
                         <input
                           type="checkbox"
                           checked={isIncluded}
-                          onChange={() => toggleFileEntry(o.filename, o.transitionIdx)}
+                          onChange={() => toggleFileEntry(o.pairKey, o.transitionIdx)}
                           onClick={(e) => e.stopPropagation()}
                           className={styles.checkbox}
                         />

@@ -61,9 +61,6 @@ function Loading() {
         </>
       )}
 
-      <button className={styles.debugBtn} onClick={() => navigate("/flow")}>
-        DEBUG CONTINUE
-      </button>
     </div>
   );
 }

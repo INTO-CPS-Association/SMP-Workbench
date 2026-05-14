@@ -5,7 +5,7 @@ from sklearn.neighbors import LocalOutlierFactor
 theta = 0.2  # Weight-boost threshold: scores below this are boosted; above it are penalised
 alpha = 0.2  # Learning rate for the weight vector update
 
-OUTLIER_THRESHOLD = 0.7
+OUTLIER_THRESHOLD = 0.85
 _MIN_SAMPLES = 4  # LOF with n_neighbors=3 needs at least 4 samples
 
 

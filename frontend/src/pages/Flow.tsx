@@ -99,6 +99,8 @@ const DnDFlow = () => {
     } else if (locationGraph) {
       setNodes(locationGraph.nodes ?? []);
       setEdges(locationGraph.edges ?? []);
+      store.setQuarantinedEntries(locationGraph.quarantinedEntries ?? []);
+      store.setSuspiciousFiles(locationGraph.suspiciousFiles ?? []);
       store.setCurrentGraph({ nodes: locationGraph.nodes ?? [], edges: locationGraph.edges ?? [] });
     } else if (sessionGraph) {
       setNodes(sessionGraph.nodes);
@@ -132,7 +134,13 @@ const DnDFlow = () => {
   );
 
   const onSave = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ nodes, edges }, null, 2)], { type: 'application/json' });
+    const project = {
+      nodes,
+      edges,
+      quarantinedEntries: store.getQuarantinedEntries(),
+      suspiciousFiles: store.getSuspiciousFiles(),
+    };
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -142,7 +150,13 @@ const DnDFlow = () => {
   }, [nodes, edges]);
 
   const onSaveAs = useCallback(async () => {
-    const json = JSON.stringify({ nodes, edges }, null, 2);
+    const project = {
+      nodes,
+      edges,
+      quarantinedEntries: store.getQuarantinedEntries(),
+      suspiciousFiles: store.getSuspiciousFiles(),
+    };
+    const json = JSON.stringify(project, null, 2);
     if ('showSaveFilePicker' in window) {
       try {
         const fileHandle = await (window as any).showSaveFilePicker({
@@ -170,6 +184,11 @@ const DnDFlow = () => {
     store.setCurrentGraph({ nodes, edges });
     navigate('/statistics', { state: { nodes, edges } });
   }, [nodes, edges, navigate]);
+
+  const onReset = useCallback(() => {
+    store.reset();
+    navigate('/');
+  }, [navigate]);
 
   // Detect source states whose outgoing probabilities don't sum to [0.99, 1.0]
   const invalidSources = useMemo(() => {
@@ -246,7 +265,7 @@ const DnDFlow = () => {
           <Background />
         </ReactFlow>
       </div>
-      <Sidebar onSave={onSave} onSaveAs={onSaveAs} onStatistics={onStatistics} />
+      <Sidebar onSave={onSave} onSaveAs={onSaveAs} onStatistics={onStatistics} onReset={onReset} />
     </div>
   );
 };

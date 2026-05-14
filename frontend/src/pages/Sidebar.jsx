@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDnD } from './DnDContext';
 
-export default ({ onSave, onSaveAs, onStatistics }) => {
+export default ({ onSave, onSaveAs, onStatistics, onReset }) => {
   const [_, setType] = useDnD();
 
   const onDragStart = (event, nodeType) => {
@@ -30,6 +30,9 @@ export default ({ onSave, onSaveAs, onStatistics }) => {
       </button>
       <button className="save-btn" onClick={onSaveAs}>
         Save As
+      </button>
+      <button className="save-btn reset-btn" onClick={onReset}>
+        New Analysis
       </button>
     </aside>
   );

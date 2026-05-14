@@ -250,6 +250,18 @@ body {
 .dndflow .save-btn:hover {
   opacity: 0.85;
 }
+
+.dndflow .reset-btn {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #dc2626;
+  margin-top: 24px;
+}
+
+.dndflow .reset-btn:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.08);
+}
  
 @media screen and (min-width: 768px) {
   .dndflow {

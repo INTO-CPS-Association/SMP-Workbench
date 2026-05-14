@@ -129,21 +129,6 @@ function Home() {
         </div>
       </main>
 
-      <div className={styles.continueRow}>
-        <button
-          className={`${styles.continueBtn} ${!analyzeFiles?.length && !projectFile ? styles.continueBtnDisabled : ""}`}
-          onClick={() => {
-            if (analyzeFiles?.length) {
-              handleAnalyze();
-            } else if (projectFile) {
-              handleLoadProject();
-            }
-          }}
-          disabled={!analyzeFiles?.length && !projectFile}
-        >
-          Continue
-        </button>
-      </div>
     </div>
   );
 }

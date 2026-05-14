@@ -72,19 +72,3 @@
     font-size: 14px;
     margin: 0;
 }
-
-.debugBtn {
-    padding: 8px 20px;
-    border: 1px dashed var(--border);
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text);
-    font-size: 12px;
-    cursor: pointer;
-    opacity: 0.5;
-    transition: opacity 0.2s;
-}
-
-.debugBtn:hover {
-    opacity: 1;
-}

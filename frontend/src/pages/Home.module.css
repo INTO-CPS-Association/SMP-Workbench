@@ -151,34 +151,6 @@
   background: var(--border);
 }
 
-.continueRow {
-  margin-top: 40px;
-  width: 100%;
-  max-width: 780px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.continueBtn {
-  padding: 8px 20px;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font-size: 12px;
-  cursor: pointer;
-  opacity: 0.5;
-  transition: opacity 0.2s;
-}
-
-.continueBtn:hover {
-  opacity: 1;
-}
-
-.continueBtnDisabled {
-  cursor: not-allowed;
-  opacity: 0.2;
-}
 
 @media (max-width: 640px) {
   .main {

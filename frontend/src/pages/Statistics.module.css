@@ -112,6 +112,24 @@ tr:hover td {
   opacity: 0.4;
 }
 
+.resetBtn {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #dc2626;
+}
+
+.resetBtn:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #dc2626 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .resetBtn { border-color: rgba(248, 113, 113, 0.35); color: #f87171; }
+  .resetBtn:hover { background: rgba(248, 113, 113, 0.12) !important; color: #f87171 !important; }
+}
+
+[data-theme="dark"] .resetBtn { border-color: rgba(248, 113, 113, 0.35); color: #f87171; }
+[data-theme="dark"] .resetBtn:hover { background: rgba(248, 113, 113, 0.12) !important; color: #f87171 !important; }
+
 .recalibBadge {
   display: inline-block;
   margin-left: 8px;

@@ -23,4 +23,12 @@ export const store = {
 
   getSuspiciousFiles: () => suspiciousFiles,
   setSuspiciousFiles: (files: SuspiciousFile[]) => { suspiciousFiles = files; },
+
+  reset: () => {
+    pendingFiles = null;
+    analysisResult = null;
+    currentGraph = null;
+    quarantinedEntries = [];
+    suspiciousFiles = [];
+  },
 };
