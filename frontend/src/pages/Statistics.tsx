@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import type { Edge, Node } from '@xyflow/react';
 import styles from './Statistics.module.css';
 import { store } from '../store';
-import type { QuarantinedEntry, SuspiciousFile, SuspiciousTransition } from '../api/analysis';
+import type { QuarantinedEntry, SuspiciousFile, SuspiciousTransition, NormalFile } from '../api/analysis';
 import { analyzeSojournOutliers } from '../api/analysis';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -21,6 +21,15 @@ interface EffectiveStat {
   recalibrated: boolean;
 }
 
+interface DotData {
+  value: number;
+  color: 'blue' | 'orange' | 'red';
+  onClick?: () => void;
+  large?: boolean;
+}
+
+const DOT_FILL = { blue: '#3b82f6', orange: '#f59e0b', red: '#ef4444' } as const;
+
 function computeEffectiveStats(
   edges: Edge[],
   quarantined: QuarantinedEntry[],
@@ -28,14 +37,34 @@ function computeEffectiveStats(
   includedFilePairs: Set<string>,
   fileOutlierData: Map<string, SuspiciousTransition[]>,
   includedFileEntries: Set<string>,
+  excludedClean: Map<string, Set<number>>,
+  normalFiles: NormalFile[],
+  excludedNormalFiles: Set<string>,
 ): Map<string, EffectiveStat> {
   const sojournByEdge = new Map<string, number[]>();
-  for (const edge of edges) {
-    const times = ((edge.data as EdgeData)?.cleanSojournTimes) ?? [];
-    sojournByEdge.set(edge.id, [...times]);
+
+  if (excludedNormalFiles.size > 0 && normalFiles.length > 0) {
+    // Rebuild from per-file data, omitting excluded files entirely.
+    // excludedClean indices are no longer valid in the rebuilt array, so they are skipped.
+    for (const edge of edges) sojournByEdge.set(edge.id, []);
+    for (const nf of normalFiles) {
+      if (excludedNormalFiles.has(nf.filename)) continue;
+      for (const [edgeId, times] of Object.entries(nf.edgeTimes)) {
+        const arr = sojournByEdge.get(edgeId);
+        if (arr) arr.push(...times);
+      }
+    }
+  } else {
+    // Normal path: use pre-aggregated cleanSojournTimes with per-dot exclusions.
+    for (const edge of edges) {
+      const allTimes = ((edge.data as EdgeData)?.cleanSojournTimes) ?? [];
+      const excl = excludedClean.get(edge.id) ?? new Set<number>();
+      sojournByEdge.set(edge.id, allTimes.filter((_, idx) => !excl.has(idx)));
+    }
   }
 
-  const anyIncluded = included.size > 0 || includedFilePairs.size > 0;
+  const anyIncluded = included.size > 0 || includedFilePairs.size > 0 ||
+    excludedClean.size > 0 || excludedNormalFiles.size > 0;
 
   for (const [i, q] of quarantined.entries()) {
     if (!included.has(i)) continue;
@@ -76,12 +105,59 @@ function computeEffectiveStats(
   return result;
 }
 
+function DotPlot({ dots, avg, unit = '', precision = 2 }: {
+  dots: DotData[];
+  avg: number;
+  unit?: string;
+  precision?: number;
+}) {
+  const W = 460, H = 44, PAD = 20;
+  if (!dots.length) return null;
+  const allVals = dots.map(d => d.value);
+  const lo = Math.min(...allVals);
+  const hi = Math.max(...allVals);
+  const range = hi - lo || 1;
+  const cx = (v: number) => PAD + ((v - lo) / range) * (W - 2 * PAD);
+  const cy = H / 2;
+  const layerOrder: Record<string, number> = { blue: 0, orange: 1, red: 2 };
+  const sorted = [...dots].sort((a, b) => (layerOrder[a.color] ?? 0) - (layerOrder[b.color] ?? 0));
+  const current = dots.find(d => d.color === 'red');
+  return (
+    <div className={styles.dotPlotWrap}>
+      <div className={styles.dotPlotRight}>
+        <div className={styles.dotPlotMeta}>
+          <span className={styles.dotPlotAvg}>avg: {avg.toFixed(precision)}{unit}</span>
+          {current && <span className={styles.dotPlotAvg}>outlier: {current.value.toFixed(precision)}{unit}</span>}
+        </div>
+        <svg width={W} height={H} className={styles.dotPlotSvg}>
+          <line x1={PAD} y1={cy} x2={W - PAD} y2={cy} stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} />
+          <text x={PAD} y={cy - 10} fontSize={9} fill="currentColor" fillOpacity={0.45} textAnchor="middle">{lo.toFixed(precision)}</text>
+          <text x={W - PAD} y={cy - 10} fontSize={9} fill="currentColor" fillOpacity={0.45} textAnchor="middle">{hi.toFixed(precision)}</text>
+          {sorted.map((d, idx) => (
+            <circle
+              key={idx}
+              cx={cx(d.value)}
+              cy={cy}
+              r={d.color === 'red' || d.large ? 5.5 : 4}
+              fill={DOT_FILL[d.color]}
+              opacity={d.color === 'red' ? 1 : 0.7}
+              style={{ cursor: d.onClick ? 'pointer' : 'default' }}
+              onClick={d.onClick}
+            />
+          ))}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 export default function Statistics() {
   const location = useLocation();
   const navigate = useNavigate();
   const { nodes, edges } = (location.state as { nodes: Node[]; edges: Edge[] }) ?? {};
   const quarantined = store.getQuarantinedEntries();
   const suspiciousFiles = store.getSuspiciousFiles();
+  const normalFiles = store.getNormalFiles();
 
   const handleReset = () => {
     store.reset();
@@ -95,6 +171,10 @@ export default function Statistics() {
   const [fileOutlierData, setFileOutlierData] = useState<Map<string, SuspiciousTransition[]>>(new Map());
   // Keys: "filename::fromState::toState::transitionIndex"
   const [includedFileEntries, setIncludedFileEntries] = useState<Set<string>>(new Set());
+  const [expandedQuarantined, setExpandedQuarantined] = useState<Set<number>>(new Set());
+  const [expandedSuspicious, setExpandedSuspicious] = useState<Set<string>>(new Set());
+  // Filenames of normal (non-suspicious) files manually flagged for exclusion via dot click
+  const [manuallyExcludedNormalFiles, setManuallyExcludedNormalFiles] = useState<Set<string>>(new Set());
 
   const toggleEntry = (idx: number) => {
     setIncluded(prev => {
@@ -108,7 +188,7 @@ export default function Statistics() {
     setLoadingFiles(prev => new Set(prev).add(filename));
     const sf = suspiciousFiles.find((f: SuspiciousFile) => f.filename === filename);
     try {
-      const scored = sf ? await analyzeSojournOutliers(sf.transitions) : [];
+      const scored = sf ? await analyzeSojournOutliers(sf.transitions, store.getOutlierMethod()) : [];
       setFileOutlierData(prev => new Map(prev).set(filename, scored));
     } catch {
       setFileOutlierData(prev => new Map(prev).set(filename, sf?.transitions ?? []));
@@ -210,11 +290,65 @@ export default function Statistics() {
     }
   };
 
+  const edgeDetailsByPair = useMemo(() => {
+    const map = new Map<string, { times: number[]; avg: number }>();
+    for (const edge of edges ?? []) {
+      const times = ((edge.data as EdgeData)?.cleanSojournTimes) ?? [];
+      const avg = (edge.data as EdgeData)?.avgSojournTime ?? 0;
+      map.set(edge.id, { times, avg });
+    }
+    return map;
+  }, [edges]);
+
+  const [excludedClean, setExcludedClean] = useState<Map<string, Set<number>>>(new Map());
+
+  const edgeSourceTarget = useMemo(() => {
+    const map = new Map<string, { source: string; target: string }>();
+    for (const edge of edges ?? []) map.set(edge.id, { source: edge.source, target: edge.target });
+    return map;
+  }, [edges]);
+
+  const toggleManualExcludeFile = (filename: string) => {
+    // excludedClean indices reference the original cleanSojournTimes array;
+    // when files are added/removed the rebuilt array has different indices, so reset it.
+    setExcludedClean(new Map());
+    setManuallyExcludedNormalFiles(prev => {
+      const next = new Set(prev);
+      if (next.has(filename)) next.delete(filename); else next.add(filename);
+      return next;
+    });
+  };
+
+  const toggleCleanEntry = (edgeId: string, idx: number) => {
+    setExcludedClean(prev => {
+      const next = new Map(prev);
+      const set = new Set(next.get(edgeId) ?? []);
+      if (set.has(idx)) set.delete(idx); else set.add(idx);
+      if (set.size === 0) next.delete(edgeId); else next.set(edgeId, set);
+      return next;
+    });
+  };
+
+  const manuallyExcluded = useMemo(() => {
+    const result: Array<{ edgeId: string; idx: number; source: string; target: string; sojournTime: number }> = [];
+    for (const [edgeId, indices] of excludedClean) {
+      const edgeData = edgeDetailsByPair.get(edgeId);
+      const edgeST = edgeSourceTarget.get(edgeId);
+      if (!edgeData || !edgeST) continue;
+      for (const idx of indices) {
+        if (idx < edgeData.times.length) {
+          result.push({ edgeId, idx, source: edgeST.source, target: edgeST.target, sojournTime: edgeData.times[idx] });
+        }
+      }
+    }
+    return result;
+  }, [excludedClean, edgeDetailsByPair, edgeSourceTarget]);
+
   const effectiveStats = useMemo(
     () => (edges
-      ? computeEffectiveStats(edges, quarantined, included, includedFilePairs, fileOutlierData, includedFileEntries)
+      ? computeEffectiveStats(edges, quarantined, included, includedFilePairs, fileOutlierData, includedFileEntries, excludedClean, normalFiles, manuallyExcludedNormalFiles)
       : new Map<string, EffectiveStat>()),
-    [included, includedFilePairs, fileOutlierData, includedFileEntries, edges, quarantined],
+    [included, includedFilePairs, fileOutlierData, includedFileEntries, edges, quarantined, excludedClean, normalFiles, manuallyExcludedNormalFiles],
   );
 
   if (!edges || edges.length === 0) {
@@ -280,7 +414,7 @@ export default function Statistics() {
                   <th>Transition</th>
                   <th>Count</th>
                   <th>Expected (avg)</th>
-                  <th>Outlier Score</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -290,6 +424,7 @@ export default function Statistics() {
                   const pairKey = `${sf.filename}::${sf.fromState}::${sf.toState}`;
                   const isIncluded = includedFilePairs.has(pairKey);
                   return (
+                    <>
                     <tr
                       key={i}
                       className={[
@@ -321,14 +456,74 @@ export default function Statistics() {
                       <td className={styles.suspiciousCount}>{sf.count}</td>
                       <td>{sf.avgCount.toFixed(1)}</td>
                       <td>
-                        <div className={styles.scoreCell}>
-                          <div className={styles.scoreBar}>
-                            <div className={styles.scoreFill} style={{ width: `${sf.outlierScore * 100}%` }} />
-                          </div>
-                          <span className={styles.scoreNum}>{sf.outlierScore.toFixed(2)}</span>
-                        </div>
+                        <button
+                          className={styles.detailsBtn}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedSuspicious(prev => {
+                              const n = new Set(prev);
+                              n.has(pairKey) ? n.delete(pairKey) : n.add(pairKey);
+                              return n;
+                            });
+                          }}
+                        >
+                          {expandedSuspicious.has(pairKey) ? 'Hide Details' : 'Details'}
+                        </button>
                       </td>
                     </tr>
+                    {expandedSuspicious.has(pairKey) && (() => {
+                      // Other suspicious files for the same transition pair (not this file)
+                      const otherSusp = sortedSuspiciousFiles.filter(
+                        (other: SuspiciousFile) =>
+                          other.filename !== sf.filename &&
+                          other.fromState === sf.fromState &&
+                          other.toState === sf.toState,
+                      );
+                      // Map count value → list of suspicious files sharing that count
+                      const otherCountMap = new Map<number, SuspiciousFile[]>();
+                      for (const other of otherSusp) {
+                        const arr = otherCountMap.get(other.count) ?? [];
+                        arr.push(other);
+                        otherCountMap.set(other.count, arr);
+                      }
+                      let currentMarked = false;
+                      const usedIdx = new Map<number, number>();
+                      const dots: DotData[] = (sf.allCounts ?? []).map((c, dotIdx) => {
+                        const dotFilename: string | undefined = (sf.allFilenames ?? [])[dotIdx];
+                        if (c === sf.count && !currentMarked) {
+                          currentMarked = true;
+                          return { value: c, color: includedFilePairs.has(pairKey) ? 'blue' : 'red', onClick: () => toggleFilePair(sf.filename, sf.fromState, sf.toState), large: true };
+                        }
+                        if (otherCountMap.has(c)) {
+                          const candidates = otherCountMap.get(c)!;
+                          const idx = usedIdx.get(c) ?? 0;
+                          const other = candidates[idx % candidates.length];
+                          usedIdx.set(c, idx + 1);
+                          const otherKey = `${other.filename}::${other.fromState}::${other.toState}`;
+                          const isReIncluded = includedFilePairs.has(otherKey);
+                          return {
+                            value: c,
+                            color: isReIncluded ? 'blue' as const : 'orange' as const,
+                            onClick: () => toggleFilePair(other.filename, other.fromState, other.toState),
+                          };
+                        }
+                        // Normal file dot — clickable to manually flag for exclusion
+                        const isExcluded = dotFilename ? manuallyExcludedNormalFiles.has(dotFilename) : false;
+                        return {
+                          value: c,
+                          color: isExcluded ? 'orange' as const : 'blue' as const,
+                          onClick: dotFilename ? () => toggleManualExcludeFile(dotFilename) : undefined,
+                        };
+                      });
+                      return (
+                        <tr key={`detail-sf-${i}`} className={styles.detailRow}>
+                          <td colSpan={6}>
+                            <DotPlot dots={dots} avg={sf.avgCount} precision={0} />
+                          </td>
+                        </tr>
+                      );
+                    })()}
+                    </>
                   );
                 })}
               </tbody>
@@ -403,10 +598,15 @@ export default function Statistics() {
                   <th>To State</th>
                   <th>Sojourn Time (s)</th>
                   <th>Outlier Score</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                {quarantined.map((q, i) => (
+                {quarantined.map((q, i) => {
+                  const edgeKey = `${q.fromState}-${q.toState}`;
+                  const edgeDetail = edgeDetailsByPair.get(edgeKey);
+                  return (
+                  <>
                   <tr
                     key={i}
                     className={included.has(i) ? styles.includedRow : undefined}
@@ -436,6 +636,129 @@ export default function Statistics() {
                         <span className={styles.scoreNum}>{q.outlierScore.toFixed(2)}</span>
                       </div>
                     </td>
+                    <td>
+                      <button
+                        className={styles.detailsBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedQuarantined(prev => {
+                            const n = new Set(prev);
+                            n.has(i) ? n.delete(i) : n.add(i);
+                            return n;
+                          });
+                        }}
+                      >
+                        {expandedQuarantined.has(i) ? 'Hide Details' : 'Details'}
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedQuarantined.has(i) && edgeDetail && (() => {
+                    const excl = excludedClean.get(edgeKey) ?? new Set<number>();
+                    const dots: DotData[] = [
+                      ...edgeDetail.times.map((v, idx) => ({
+                        value: v,
+                        color: excl.has(idx) ? 'orange' as const : 'blue' as const,
+                        onClick: () => toggleCleanEntry(edgeKey, idx),
+                      })),
+                      ...quarantined
+                        .map((oq, oi) => ({ oq, oi }))
+                        .filter(({ oq, oi }) => oi !== i && oq.fromState === q.fromState && oq.toState === q.toState)
+                        .map(({ oq, oi }) => ({
+                          value: oq.sojournTime,
+                          color: included.has(oi) ? 'blue' as const : 'orange' as const,
+                          onClick: () => toggleEntry(oi),
+                        })),
+                      { value: q.sojournTime, color: included.has(i) ? 'blue' : 'red', onClick: () => toggleEntry(i), large: true },
+                    ];
+                    return (
+                      <tr key={`detail-q-${i}`} className={styles.detailRow}>
+                        <td colSpan={6}>
+                          <DotPlot dots={dots} avg={edgeDetail.avg} unit="s" />
+                        </td>
+                      </tr>
+                    );
+                  })()}
+                  </>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {manuallyExcluded.length > 0 && (
+        <div className={styles.quarantineSection}>
+          <div className={styles.quarantineHeader}>
+            <div>
+              <h2 className={styles.quarantineTitle}>Manually Excluded Clean Entries</h2>
+              <p className={styles.quarantineDesc}>
+                {manuallyExcluded.length} {manuallyExcluded.length === 1 ? 'entry was' : 'entries were'} manually
+                excluded from statistics. Click an entry to re-include it.
+              </p>
+            </div>
+          </div>
+          <div className={styles.tableWrapper}>
+            <table>
+              <thead>
+                <tr>
+                  <th>From State</th>
+                  <th>To State</th>
+                  <th>Sojourn Time (s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {manuallyExcluded.map((e, i) => (
+                  <tr
+                    key={i}
+                    onClick={() => toggleCleanEntry(e.edgeId, e.idx)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td>{nodeLabel[e.source] ?? e.source}</td>
+                    <td>{nodeLabel[e.target] ?? e.target}</td>
+                    <td>{e.sojournTime.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {manuallyExcludedNormalFiles.size > 0 && (
+        <div className={styles.quarantineSection}>
+          <div className={styles.quarantineHeader}>
+            <div>
+              <h2 className={styles.quarantineTitle}>Manually Flagged Files</h2>
+              <p className={styles.quarantineDesc}>
+                {manuallyExcludedNormalFiles.size}{' '}
+                {manuallyExcludedNormalFiles.size === 1 ? 'file was' : 'files were'} manually excluded
+                from the distribution plot. Statistics update automatically. Click a row to re-include it.
+              </p>
+            </div>
+            <button
+              className={styles.selectAllBtn}
+              onClick={() => setManuallyExcludedNormalFiles(new Set())}
+            >
+              Clear all
+            </button>
+          </div>
+          <div className={styles.tableWrapper}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Filename</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...manuallyExcludedNormalFiles].sort().map(fn => (
+                  <tr
+                    key={fn}
+                    onClick={() => toggleManualExcludeFile(fn)}
+                    style={{ cursor: 'pointer' }}
+                    className={styles.includedRow}
+                  >
+                    <td>{fn}</td>
                   </tr>
                 ))}
               </tbody>

@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { store } from "../store";
+import type { OutlierMethod } from "../store";
 import styles from "./Home.module.css";
 import ThemeToggle from "../components/ThemeToggle";
 
@@ -8,8 +9,20 @@ function Home() {
   const navigate = useNavigate();
   const [analyzeFiles, setAnalyzeFiles] = useState<FileList | null>(null);
   const [projectFile, setProjectFile] = useState<File | null>(null);
+  const [outlierMethod, setOutlierMethod] = useState<OutlierMethod>(store.getOutlierMethod());
+  const [fileMethod, setFileMethod] = useState<OutlierMethod>(store.getFileDetectionMethod());
   const analyzeRef = useRef<HTMLInputElement>(null);
   const projectRef = useRef<HTMLInputElement>(null);
+
+  const handleMethodChange = (m: OutlierMethod) => {
+    store.setOutlierMethod(m);
+    setOutlierMethod(m);
+  };
+
+  const handleFileMethodChange = (m: OutlierMethod) => {
+    store.setFileDetectionMethod(m);
+    setFileMethod(m);
+  };
 
   const handleAnalyze = () => {
     if (!analyzeFiles || analyzeFiles.length === 0) return;
@@ -50,6 +63,43 @@ function Home() {
           <p className={styles.cardDescription}>
             Upload one or more JSON log files to generate a visual flow diagram.
           </p>
+
+          <div className={styles.methodSection}>
+            <span className={styles.methodLabel}>Sojourn time outliers</span>
+            <div className={styles.methodToggle}>
+              <button
+                className={`${styles.methodBtn} ${outlierMethod === 'lof' ? styles.methodBtnActive : ''}`}
+                onClick={() => handleMethodChange('lof')}
+              >
+                Adaptive LOF
+              </button>
+              <button
+                className={`${styles.methodBtn} ${outlierMethod === 'iqr' ? styles.methodBtnActive : ''}`}
+                onClick={() => handleMethodChange('iqr')}
+              >
+                IQR
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.methodSection}>
+            <span className={styles.methodLabel}>File outlier detection</span>
+            <div className={styles.methodToggle}>
+              <button
+                className={`${styles.methodBtn} ${fileMethod === 'iqr' ? styles.methodBtnActive : ''}`}
+                onClick={() => handleFileMethodChange('iqr')}
+              >
+                IQR
+              </button>
+              <button
+                className={`${styles.methodBtn} ${fileMethod === 'lof' ? styles.methodBtnActive : ''}`}
+                onClick={() => handleFileMethodChange('lof')}
+              >
+                Adaptive LOF
+              </button>
+            </div>
+          </div>
+
           <div
             className={`${styles.dropZone} ${analyzeFiles && analyzeFiles.length > 0 ? styles.dropZoneActive : ""}`}
             onClick={() => analyzeRef.current?.click()}

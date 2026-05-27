@@ -112,6 +112,31 @@ def analyze_anomalies(input: list[int], iter_count: int) -> list[float]:
 # Public API
 # ---------------------------------------------------------------------------
 
+def detect_outliers_iqr(sojourn_times: list) -> OutlierResult:
+    """IQR-based sojourn-time outlier detection.
+
+    Flags every entry that lies above the upper fence Q3 + 1.5·IQR.
+    Because IQR is a hard threshold (not a scoring method) all flagged
+    entries receive outlierScore = 1.0 and clean entries receive 0.0.
+    Returns all-clean when fewer than _MIN_SAMPLES values are supplied or
+    when the IQR is zero (all values identical).
+    """
+    n = len(sojourn_times)
+    if n < _MIN_SAMPLES:
+        return OutlierResult(is_outlier=[False] * n, scores=[0.0] * n)
+
+    arr = np.array(sojourn_times, dtype=float)
+    q1, q3 = float(np.percentile(arr, 25)), float(np.percentile(arr, 75))
+    iqr = q3 - q1
+    if iqr == 0:
+        return OutlierResult(is_outlier=[False] * n, scores=[0.0] * n)
+
+    upper_fence = q3 + 1.5 * iqr
+    is_outlier = [float(v) > upper_fence for v in sojourn_times]
+    scores     = [1.0 if o else 0.0 for o in is_outlier]
+    return OutlierResult(is_outlier=is_outlier, scores=scores)
+
+
 def detect_outliers_with_scores(sojourn_times: list, iter_count: int = 20) -> OutlierResult:
     """Runs the ensemble on sojourn_times and returns flags and scores for every entry.
 
@@ -132,12 +157,17 @@ def detect_outliers_with_scores(sojourn_times: list, iter_count: int = 20) -> Ou
 
 def detect_suspicious_files(
     file_counts: dict[str, dict[tuple[str, str], int]],
+    method: str = 'iqr',
 ) -> list[dict]:
     """Flags files whose count of a (from, to) transition is anomalously high across all files.
 
-    For each transition pair, a count-per-file vector is built and scored with the
-    same outlier detection used for sojourn times.  Only files with a count above
-    the average are flagged — unusually low counts are not considered suspicious.
+    method='iqr'  — IQR fence (Q3 + 1.5·IQR); reliable even with very few files.
+    method='lof'  — Adaptive LOF ensemble on the per-pair count vectors; requires
+                    at least _MIN_SAMPLES files.
+
+    Only counts above the fence/threshold AND above the mean are flagged.
+    Every flagged entry includes allCounts and allFilenames (parallel lists) so the
+    frontend can identify which file each dot in the distribution plot represents.
     """
     if len(file_counts) < _MIN_SAMPLES:
         return []
@@ -149,20 +179,41 @@ def detect_suspicious_files(
 
     flagged: list[dict] = []
     for pair in sorted(all_pairs):
-        counts_vec = [file_counts[fn].get(pair, 0) for fn in filenames]
-        result = detect_outliers_with_scores(counts_vec)
-        avg = sum(counts_vec) / len(counts_vec)
-        for fn, count, outlier, score in zip(filenames, counts_vec, result.is_outlier, result.scores):
-            if outlier and count > avg:
-                flagged.append({
-                    "filename": fn,
-                    "transition": f"{pair[0]} → {pair[1]}",
-                    "fromState": pair[0],
-                    "toState": pair[1],
-                    "count": count,
-                    "avgCount": round(avg, 2),
-                    "outlierScore": round(score, 4),
-                })
+        counts_vec = np.array([file_counts[fn].get(pair, 0) for fn in filenames], dtype=float)
+        avg         = float(counts_vec.mean())
+        counts_list = [int(c) for c in counts_vec]
+
+        if method == 'lof':
+            outlier_result = detect_outliers_with_scores(counts_vec.tolist())
+            for fn, raw, is_out in zip(filenames, counts_vec, outlier_result.is_outlier):
+                count = int(raw)
+                if is_out and count > avg:
+                    flagged.append({
+                        "filename":     fn,
+                        "transition":   f"{pair[0]} → {pair[1]}",
+                        "fromState":    pair[0],
+                        "toState":      pair[1],
+                        "count":        count,
+                        "avgCount":     round(avg, 2),
+                        "allCounts":    counts_list,
+                        "allFilenames": filenames,
+                    })
+        else:  # iqr (default)
+            q1, q3      = float(np.percentile(counts_vec, 25)), float(np.percentile(counts_vec, 75))
+            upper_fence = q3 + 1.5 * (q3 - q1)
+            for fn, raw in zip(filenames, counts_vec):
+                count = int(raw)
+                if count > upper_fence and count > avg:
+                    flagged.append({
+                        "filename":     fn,
+                        "transition":   f"{pair[0]} → {pair[1]}",
+                        "fromState":    pair[0],
+                        "toState":      pair[1],
+                        "count":        count,
+                        "avgCount":     round(avg, 2),
+                        "allCounts":    counts_list,
+                        "allFilenames": filenames,
+                    })
 
     return flagged
 

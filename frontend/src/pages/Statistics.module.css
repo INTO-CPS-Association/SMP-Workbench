@@ -324,3 +324,65 @@ tr:hover td {
   color: var(--text);
   min-width: 32px;
 }
+
+/* ── Details button & expanded rows ──────────────────────────────── */
+
+.detailsBtn {
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.detailsBtn:hover {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+.detailRow td {
+  background: var(--code-bg) !important;
+  padding: 14px 24px;
+}
+
+.detailRow:hover td {
+  background: var(--code-bg) !important;
+}
+
+.dotPlotWrap {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.dotPlotMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 100px;
+}
+
+.dotPlotAvg {
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.dotPlotRight {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-left: auto;
+}
+
+.dotPlotSvg {
+  color: var(--text-h);
+  flex-shrink: 0;
+}

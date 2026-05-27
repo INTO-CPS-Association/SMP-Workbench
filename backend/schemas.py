@@ -39,7 +39,8 @@ class SuspiciousFileSchema(BaseModel):
     toState: str
     count: int
     avgCount: float
-    outlierScore: float
+    allCounts: List[int] = []
+    allFilenames: List[str] = []
     transitions: List[SuspiciousTransitionEntry] = []
 
 
@@ -52,3 +53,4 @@ class AnalysisResponse(BaseModel):
 
 class SojournOutliersRequest(BaseModel):
     transitions: List[SuspiciousTransitionEntry]
+    method: str = 'lof'   # 'lof' | 'iqr'

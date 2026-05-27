@@ -94,6 +94,7 @@ const DnDFlow = () => {
       setEdges(e);
       store.setQuarantinedEntries(analysisResult.quarantined ?? []);
       store.setSuspiciousFiles(analysisResult.suspiciousFiles ?? []);
+      store.setNormalFiles(analysisResult.normalFiles ?? []);
       store.setAnalysisResult(null);
       store.setCurrentGraph({ nodes: n, edges: e });
     } else if (locationGraph) {
@@ -198,7 +199,7 @@ const DnDFlow = () => {
       sums[edge.source] = (sums[edge.source] ?? 0) + p;
     }
     return Object.entries(sums)
-      .filter(([_, sum]) => sum > 0 && (sum > 1.0 || sum < 0.99))
+      .filter(([_, sum]) => sum > 0 && (sum > 1.001 || sum < 0.989))
       .map(([src, sum]) => ({
         source: src,
         label: (nodes.find(n => n.id === src)?.data?.label as string) ?? src,

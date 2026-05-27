@@ -7,13 +7,13 @@ from dataclasses import dataclass, field
 from typing import AsyncGenerator, List
 
 import numpy as np
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, Query, HTTPException
 from fastapi.responses import StreamingResponse
 
 from classes.json_file_reading_strategy import JsonFileReadingStrategy
 from classes.json_log_parsing_strategy import JsonLogParsingStrategy
 from utils.statistics import calculateStatistics
-from utils.outlier_detection import detect_outliers_with_scores, detect_suspicious_files
+from utils.outlier_detection import detect_outliers_with_scores, detect_outliers_iqr, detect_suspicious_files
 from backend.schemas import AnalysisResponse, NodeSchema, EdgeSchema, QuarantinedEntrySchema, SuspiciousFileSchema, SuspiciousTransitionEntry, SojournOutliersRequest
 
 router = APIRouter(prefix="/api", tags=["analysis"])
@@ -83,14 +83,21 @@ def _attach_suspicious_transitions(
     return result
 
 
+def _pick_detector(method: str):
+    """Returns the sojourn-time outlier detection callable for the given method name."""
+    return detect_outliers_iqr if method == 'iqr' else detect_outliers_with_scores
+
+
 def _score_transitions(
     transitions: List[SuspiciousTransitionEntry],
+    method: str = 'lof',
 ) -> List[SuspiciousTransitionEntry]:
     """Groups transitions by (from, to) pair and runs sojourn-time outlier detection on each group.
 
     Returns the same list with outlierScore and isOutlier populated.
     Called inside asyncio.to_thread so the event loop stays free.
     """
+    detector = _pick_detector(method)
     pair_indices: dict[tuple[str, str], list[int]] = {}
     for idx, t in enumerate(transitions):
         key = (t.fromState, t.toState)
@@ -105,7 +112,7 @@ def _score_transitions(
 
     for indices in pair_indices.values():
         times = [transitions[i].sojournTime for i in indices]
-        outlier_result = detect_outliers_with_scores(times)
+        outlier_result = detector(times)
         for list_pos, orig_idx in enumerate(indices):
             results[orig_idx].outlierScore = round(outlier_result.scores[list_pos], 4)
             results[orig_idx].isOutlier = bool(outlier_result.is_outlier[list_pos])
@@ -195,7 +202,7 @@ def _build_edges(
 # Streaming endpoint
 # ---------------------------------------------------------------------------
 
-async def _stream_analysis(files: List[UploadFile]) -> AsyncGenerator[str, None]:
+async def _stream_analysis(files: List[UploadFile], method: str = 'lof', file_method: str = 'iqr') -> AsyncGenerator[str, None]:
     reader = JsonFileReadingStrategy()
     parser = JsonLogParsingStrategy()
     file_info: dict[str, list] = {}
@@ -225,28 +232,45 @@ async def _stream_analysis(files: List[UploadFile]) -> AsyncGenerator[str, None]
 
     # Phase 1.5: flag files with anomalously high transition counts (31 %)
     yield _sse({"percent": 31, "message": "Checking file consistency…"})
-    raw_suspicious = await asyncio.to_thread(detect_suspicious_files, file_counts)
+    raw_suspicious = await asyncio.to_thread(detect_suspicious_files, file_counts, file_method)
     suspicious_files = _attach_suspicious_transitions(raw_suspicious, file_transitions)
     suspicious_filenames = {sf["filename"] for sf in suspicious_files}
 
     # Phase 2: merge clean transitions and group by state pair (32 %)
+    # Groups are built with per-entry file attribution so clean sojourn times can be
+    # tracked per file and sent to the frontend for client-side file exclusion.
     yield _sse({"percent": 32, "message": "Grouping transitions…"})
-    all_transitions = _exclude_suspicious_files(file_info, suspicious_filenames)
-    if not all_transitions:
+    clean_file_info = {fn: v for fn, v in file_info.items() if fn not in suspicious_filenames}
+    if not any(clean_file_info.values()):
         yield _sse({"error": "No valid transitions found in the uploaded files."})
         return
-    groups = _group_by_pair(all_transitions)
+
+    groups: dict[tuple[str, str], list] = {}
+    group_file_attr: dict[tuple[str, str], list[str]] = {}
+    for filename, transitions in clean_file_info.items():
+        for info in transitions:
+            key = (info.getFromState().getName(), info.getToState().getName())
+            if key not in groups:
+                groups[key] = []
+                group_file_attr[key] = []
+            groups[key].append(info)
+            group_file_attr[key].append(filename)
 
     # Phase 3: outlier detection per (from, to) pair (38 – 85 %)
+    detector = _pick_detector(method)
     num_pairs = len(groups)
     quarantined_list: list[dict] = []
     clean_by_pair: dict[tuple[str, str], list] = {}
+    # filename → edge_id → [clean sojourn times] — sent to frontend for client-side exclusion
+    normal_file_times: dict[str, dict[str, list[float]]] = {}
 
     for pair_idx, ((fn, tn), entries) in enumerate(groups.items()):
+        edge_id = f"{fn}-{tn}"
+        file_attrs = group_file_attr[(fn, tn)]
         pct = int(38 + pair_idx / num_pairs * 47)
         yield _sse({"percent": pct, "message": f"Outlier detection: {fn} → {tn}  ({pair_idx + 1}/{num_pairs})"})
         sojourn_times = [info.getSojournTime() for info in entries]
-        outlier_result = await asyncio.to_thread(detect_outliers_with_scores, sojourn_times)
+        outlier_result = await asyncio.to_thread(detector, sojourn_times)
 
         clean = []
         for info, outlier, score in zip(entries, outlier_result.is_outlier, outlier_result.scores):
@@ -258,7 +282,15 @@ async def _stream_analysis(files: List[UploadFile]) -> AsyncGenerator[str, None]
                 })
             else:
                 clean.append(info)
+
         clean_by_pair[(fn, tn)] = clean if clean else list(entries)
+
+        # Track per-file clean sojourn times (mirrors the fallback above)
+        for info, fname, outlier in zip(entries, file_attrs, outlier_result.is_outlier):
+            if not outlier or not clean:
+                normal_file_times.setdefault(fname, {}).setdefault(edge_id, []).append(
+                    float(info.getSojournTime())
+                )
 
     # Phase 4: compute statistics and build the final response (86 – 100 %)
     yield _sse({"percent": 86, "message": "Computing statistics…"})
@@ -268,18 +300,32 @@ async def _stream_analysis(files: List[UploadFile]) -> AsyncGenerator[str, None]
 
     yield _sse({"percent": 95, "message": "Building response…"})
     nodes = [{"id": n, "label": n} for n in sorted(state_names)]
+    # Ensure allFilenames is always present in suspicious file entries
+    for sf in suspicious_files:
+        sf.setdefault("allFilenames", [])
+
+    normal_files_data = [
+        {"filename": fname, "edgeTimes": edge_dict}
+        for fname, edge_dict in normal_file_times.items()
+    ]
+
     yield _sse({"percent": 100, "message": "Done!", "result": {
         "nodes": nodes,
         "edges": edges,
         "quarantined": quarantined_list,
         "suspiciousFiles": suspicious_files,
+        "normalFiles": normal_files_data,
     }})
 
 
 @router.post("/analyze/stream")
-async def analyze_files_stream(files: List[UploadFile] = File(...)):
+async def analyze_files_stream(
+    files: List[UploadFile] = File(...),
+    method: str = Query(default='lof', pattern='^(lof|iqr)$'),
+    file_method: str = Query(default='iqr', pattern='^(lof|iqr)$'),
+):
     return StreamingResponse(
-        _stream_analysis(files),
+        _stream_analysis(files, method, file_method),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -292,7 +338,7 @@ async def score_sojourn_outliers(body: SojournOutliersRequest):
     Called by the frontend when the user re-includes a suspicious file so that
     individual sojourn-time outliers within that file can be shown and excluded.
     """
-    return await asyncio.to_thread(_score_transitions, body.transitions)
+    return await asyncio.to_thread(_score_transitions, body.transitions, body.method)
 
 
 # ---------------------------------------------------------------------------
@@ -374,7 +420,7 @@ async def analyze_files(files: List[UploadFile] = File(...)):
             toState=s["toState"],
             count=s["count"],
             avgCount=s["avgCount"],
-            outlierScore=s["outlierScore"],
+            allCounts=s.get("allCounts", []),
             transitions=[SuspiciousTransitionEntry(**t) for t in s.get("transitions", [])],
         )
         for s in suspicious_entries

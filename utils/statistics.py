@@ -36,18 +36,14 @@ class GroupedTransitions:
 @dataclass
 class PartitionResult:
     """Outcome of running outlier detection across all (from, to) transition pairs."""
-    # Transitions that passed outlier detection, keyed by (from_state, to_state)
     clean_by_pair: dict = field(default_factory=dict)
-    # Entries that were flagged as outliers and removed from the statistics
     quarantined: list = field(default_factory=list)
 
 
 @dataclass
 class StatisticsResult:
     """The complete output of calculateStatistics."""
-    # One StdStateTransitionStatistics object per clean (from, to) pair
     statistics: list = field(default_factory=list)
-    # Transition records that were excluded as sojourn-time outliers
     quarantined: list = field(default_factory=list)
 
 
@@ -121,10 +117,10 @@ def _group_by_pair(transitions: list[StateTransitionInfo]) -> GroupedTransitions
 def _partition_outliers(
     groups: dict[tuple[str, str], list[StateTransitionInfo]],
 ) -> PartitionResult:
-    """Splits each pair's transitions into clean and quarantined using the LOF ensemble.
+    """Splits each pair's transitions into clean and quarantined using LOF outlier detection.
 
-    If every entry for a pair is flagged as an outlier, all entries are kept as clean
-    to prevent that transition pair from disappearing from the statistics entirely.
+    If every entry ends up quarantined the pair is restored to all-clean to prevent
+    it disappearing from the statistics.
     """
     clean_by_pair: dict[tuple[str, str], list[StateTransitionInfo]] = {}
     quarantined: list[QuarantinedEntry] = []
@@ -133,15 +129,26 @@ def _partition_outliers(
         sojourn_times = [e.getSojournTime() for e in entries]
         result = detect_outliers_with_scores(sojourn_times)
 
-        clean = [e for e, flag in zip(entries, result.is_outlier) if not flag]
-        quarantined.extend(
-            QuarantinedEntry(fn, tn, float(e.getSojournTime()), score)
-            for e, flag, score in zip(entries, result.is_outlier, result.scores)
-            if flag
-        )
-        clean_by_pair[(fn, tn)] = clean if clean else list(entries)
+        q: list[QuarantinedEntry] = []
+        clean: list[StateTransitionInfo] = []
 
-    return PartitionResult(clean_by_pair=clean_by_pair, quarantined=quarantined)
+        for e, outlier, score in zip(entries, result.is_outlier, result.scores):
+            if outlier:
+                q.append(QuarantinedEntry(fn, tn, float(e.getSojournTime()), score))
+            else:
+                clean.append(e)
+
+        if not clean:
+            clean = list(entries)
+            q = []
+
+        clean_by_pair[(fn, tn)] = clean
+        quarantined.extend(q)
+
+    return PartitionResult(
+        clean_by_pair=clean_by_pair,
+        quarantined=quarantined,
+    )
 
 
 def _compute_from_counts(
@@ -195,4 +202,7 @@ def calculateStatistics(
     partitioned = _partition_outliers(grouped.groups)
     from_counts = _compute_from_counts(partitioned.clean_by_pair)
     statistics = _build_statistics(partitioned.clean_by_pair, from_counts, grouped.state_objects)
-    return StatisticsResult(statistics=statistics, quarantined=partitioned.quarantined)
+    return StatisticsResult(
+        statistics=statistics,
+        quarantined=partitioned.quarantined,
+    )

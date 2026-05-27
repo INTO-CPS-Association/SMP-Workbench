@@ -37,8 +37,15 @@ export interface SuspiciousFile {
   toState: string;
   count: number;
   avgCount: number;
-  outlierScore: number;
+  allCounts: number[];
+  allFilenames: string[];
   transitions: SuspiciousTransition[];
+}
+
+export interface NormalFile {
+  filename: string;
+  /** edgeId (e.g. "state1-state2") → clean sojourn times for this file on that edge */
+  edgeTimes: Record<string, number[]>;
 }
 
 export interface AnalysisResult {
@@ -46,14 +53,16 @@ export interface AnalysisResult {
   edges: AnalysisEdge[];
   quarantined: QuarantinedEntry[];
   suspiciousFiles: SuspiciousFile[];
+  normalFiles: NormalFile[];
 }
 
 export async function analyzeSojournOutliers(
   transitions: SuspiciousTransition[],
+  method: 'lof' | 'iqr' = 'lof',
 ): Promise<SuspiciousTransition[]> {
   const response = await client.post<SuspiciousTransition[]>(
     '/api/analyze/sojourn-outliers',
-    { transitions },
+    { transitions, method },
   );
   return response.data;
 }
@@ -61,11 +70,13 @@ export async function analyzeSojournOutliers(
 export async function analyzeFilesStreaming(
   files: FileList,
   onProgress: (percent: number, message: string) => void,
+  method: 'lof' | 'iqr' = 'lof',
+  fileMethod: 'lof' | 'iqr' = 'iqr',
 ): Promise<AnalysisResult> {
   const formData = new FormData();
   Array.from(files).forEach((file) => formData.append('files', file));
 
-  const response = await fetch('http://localhost:8000/api/analyze/stream', {
+  const response = await fetch(`http://localhost:8000/api/analyze/stream?method=${method}&file_method=${fileMethod}`, {
     method: 'POST',
     body: formData,
   });
