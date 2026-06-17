@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pydantic
+pytest
+httpx
+python-statemachine
+pydot
+graphviz

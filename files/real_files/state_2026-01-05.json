@@ -1,0 +1,17 @@
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2025-12-23T11:21:06.274+00:00","t_exit":"2026-01-05T09:00:19.041+00:00","to_state":"Error","from_state":"Idle","sojourn_sec":1114753}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:00:19.041+00:00","t_exit":"2026-01-05T09:00:19.881+00:00","to_state":"Idle","from_state":"Error","sojourn_sec":1}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:00:19.881+00:00","t_exit":"2026-01-05T09:16:30.808+00:00","to_state":"Error","from_state":"Idle","sojourn_sec":971}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:30.808+00:00","t_exit":"2026-01-05T09:16:33.638+00:00","to_state":"Idle","from_state":"Error","sojourn_sec":3}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:33.638+00:00","t_exit":"2026-01-05T09:16:33.718+00:00","to_state":"Error","from_state":"Idle","sojourn_sec":0}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:33.718+00:00","t_exit":"2026-01-05T09:16:34.178+00:00","to_state":"Idle","from_state":"Error","sojourn_sec":0}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:34.178+00:00","t_exit":"2026-01-05T09:16:34.508+00:00","to_state":"Error","from_state":"Idle","sojourn_sec":1}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:34.508+00:00","t_exit":"2026-01-05T09:16:35.238+00:00","to_state":"Idle","from_state":"Error","sojourn_sec":0}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:35.238+00:00","t_exit":"2026-01-05T09:16:35.628+00:00","to_state":"Error","from_state":"Idle","sojourn_sec":1}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:35.628+00:00","t_exit":"2026-01-05T09:16:38.018+00:00","to_state":"Idle","from_state":"Error","sojourn_sec":2}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:38.018+00:00","t_exit":"2026-01-05T09:16:38.088+00:00","to_state":"Error","from_state":"Idle","sojourn_sec":0}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:38.088+00:00","t_exit":"2026-01-05T09:16:41.578+00:00","to_state":"Idle","from_state":"Error","sojourn_sec":4}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T09:16:41.578+00:00","t_exit":"2026-01-05T11:24:00.157+00:00","to_state":"Error","from_state":"Idle","sojourn_sec":7638}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T11:24:00.157+00:00","t_exit":"2026-01-05T12:37:52.375+00:00","to_state":"Error_EmgStop","from_state":"Error","sojourn_sec":4432}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T12:37:52.375+00:00","t_exit":"2026-01-05T13:12:01.489+00:00","to_state":"Error","from_state":"Error_EmgStop","sojourn_sec":2049}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T13:12:01.489+00:00","t_exit":"2026-01-05T13:16:45.588+00:00","to_state":"Error_EmgStop","from_state":"Error","sojourn_sec":285}
+{"component":"physical_twin","unit_id":"1407590","t_enter":"2026-01-05T13:16:45.588+00:00","t_exit":"2026-01-05T13:21:22.208+00:00","to_state":"Error","from_state":"Error_EmgStop","sojourn_sec":276}
