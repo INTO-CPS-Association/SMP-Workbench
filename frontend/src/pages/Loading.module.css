@@ -1,0 +1,74 @@
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 24px;
+    height: 100vh;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-h);
+    margin: 0;
+}
+
+.progressWrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 360px;
+}
+
+.progressBar {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--accent);
+    transition: width 0.25s ease;
+}
+
+.progressPct {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--text);
+    min-width: 38px;
+    text-align: right;
+}
+
+.continueBtn {
+    padding: 12px 32px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.continueBtn:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+
+.hint {
+    color: var(--text);
+    font-size: 14px;
+    margin: 0;
+}
+
+.error {
+    color: #e53e3e;
+    font-size: 14px;
+    margin: 0;
+}
