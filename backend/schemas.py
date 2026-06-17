@@ -1,10 +1,16 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 
 class NodeSchema(BaseModel):
     id: str
     label: str
+
+
+class DistributionFitSchema(BaseModel):
+    distribution: str
+    pValue: float
+    ksStat: float
 
 
 class EdgeSchema(BaseModel):
@@ -15,6 +21,7 @@ class EdgeSchema(BaseModel):
     avgSojournTime: float
     transitionCount: int
     cleanSojournTimes: List[float]
+    distributionFit: Optional[DistributionFitSchema] = None
 
 
 class QuarantinedEntrySchema(BaseModel):

@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 
 from classes.json_file_reading_strategy import JsonFileReadingStrategy
 from classes.json_log_parsing_strategy import JsonLogParsingStrategy
-from utils.statistics import calculateStatistics
+from utils.statistics import calculateStatistics, fit_distribution_for_display
 from utils.outlier_detection import detect_outliers_with_scores, detect_outliers_iqr, detect_suspicious_files
 from backend.schemas import AnalysisResponse, NodeSchema, EdgeSchema, QuarantinedEntrySchema, SuspiciousFileSchema, SuspiciousTransitionEntry, SojournOutliersRequest
 
@@ -193,6 +193,7 @@ def _build_edges(
             "avgSojournTime": round(float(np.average(sojourn_times)), 2),
             "transitionCount": len(sojourn_times),
             "cleanSojournTimes": [float(t) for t in sojourn_times],
+            "distributionFit": fit_distribution_for_display(sojourn_times),
         })
     _normalize_probabilities(edges)
     return edges
@@ -202,7 +203,7 @@ def _build_edges(
 # Streaming endpoint
 # ---------------------------------------------------------------------------
 
-async def _stream_analysis(files: List[UploadFile], method: str = 'lof', file_method: str = 'iqr') -> AsyncGenerator[str, None]:
+async def _stream_analysis(files: List[UploadFile], method: str = 'iqr', file_method: str = 'iqr') -> AsyncGenerator[str, None]:
     reader = JsonFileReadingStrategy()
     parser = JsonLogParsingStrategy()
     file_info: dict[str, list] = {}
@@ -321,7 +322,7 @@ async def _stream_analysis(files: List[UploadFile], method: str = 'lof', file_me
 @router.post("/analyze/stream")
 async def analyze_files_stream(
     files: List[UploadFile] = File(...),
-    method: str = Query(default='lof', pattern='^(lof|iqr)$'),
+    method: str = Query(default='iqr', pattern='^(lof|iqr)$'),
     file_method: str = Query(default='iqr', pattern='^(lof|iqr)$'),
 ):
     return StreamingResponse(

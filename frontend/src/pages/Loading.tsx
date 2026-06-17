@@ -22,7 +22,7 @@ function Loading() {
     analyzeFilesStreaming(files, (pct, msg) => {
       setProgress(pct);
       setMessage(msg);
-    }, store.getOutlierMethod(), store.getFileDetectionMethod())
+    })
       .then((result) => {
         store.setAnalysisResult(result);
         store.setPendingFiles(null);

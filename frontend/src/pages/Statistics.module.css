@@ -223,6 +223,287 @@ tr:hover td {
   }
 }
 
+/* ── Flagged (cause) row — bright yellow highlight ─────────────── */
+
+.flaggedRow td {
+  background: #fef9c3 !important;
+}
+
+.flaggedRow:hover td {
+  background: #fef08a !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .flaggedRow td { background: rgba(250, 204, 21, 0.18) !important; }
+  .flaggedRow:hover td { background: rgba(250, 204, 21, 0.28) !important; }
+}
+
+[data-theme="dark"] .flaggedRow td { background: rgba(250, 204, 21, 0.18) !important; }
+[data-theme="dark"] .flaggedRow:hover td { background: rgba(250, 204, 21, 0.28) !important; }
+
+.causeBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  background: rgba(251, 191, 36, 0.25);
+  color: #92400e;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .causeBadge {
+    background: rgba(251, 191, 36, 0.18);
+    color: #fcd34d;
+    border-color: rgba(251, 191, 36, 0.4);
+  }
+}
+
+[data-theme="dark"] .causeBadge {
+  background: rgba(251, 191, 36, 0.18);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+/* ── Per-file block in quarantined files section ─────────────────── */
+
+.fileBlock {
+  margin-bottom: 20px;
+}
+
+.fileBlockHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  font-weight: 600;
+}
+
+.fileBlock .tableWrapper {
+  border-radius: 0 0 12px 12px;
+}
+
+.fileBlockHeaderCollapsed {
+  border-radius: 12px !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.fileBlockHeader:hover {
+  background: var(--accent-bg);
+}
+
+.outlierFileCount {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.modifiedBadge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--sans, sans-serif);
+  letter-spacing: 0.3px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  vertical-align: middle;
+}
+
+@media (prefers-color-scheme: dark) {
+  .modifiedBadge {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+}
+
+[data-theme="dark"] .modifiedBadge {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.fileBlockChevron {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+/* ── Outer section dropdowns (Quarantined Files, Quarantined Log Entries) ─ */
+
+.sectionDropdown {
+  margin-bottom: 32px;
+}
+
+.sectionDropdownHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sectionDropdownHeader h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+  letter-spacing: -0.3px;
+}
+
+.sectionDropdownHeader:hover {
+  background: var(--accent-bg);
+}
+
+.sectionDropdownCollapsed {
+  border-radius: 12px !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.sectionDropdownCount {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text);
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+}
+
+.sectionDropdownBody {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 20px 24px;
+}
+
+.sectionDropdownDesc {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0 0 16px;
+  line-height: 1.5;
+  max-width: 600px;
+}
+
+.sectionLogHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sectionLogHeader .sectionDropdownDesc {
+  margin-bottom: 0;
+}
+
+.sectionDropdownFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.sectionCloseBtn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sectionCloseBtn:hover {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+.backToTopBtn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.backToTopBtn:hover {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+/* ── File card footer (close button at bottom of nested file cards) ─ */
+
+.fileBlockFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+
+/* Remove bottom radius from tableWrapper when footer follows */
+.fileBlock .tableWrapper {
+  border-radius: 0 !important;
+}
+
+/* ── Select non-flagged bar (thead / tfoot of quarantined file table) ─ */
+
+.selectBarCell {
+  text-align: left !important;
+  padding: 8px 16px !important;
+  font-weight: normal !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+.selectNonFlaggedBtn {
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.selectNonFlaggedBtn:hover {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
 /* ── Quarantine section ────────────────────────────────────────── */
 
 .quarantineSection {
@@ -385,4 +666,102 @@ tr:hover td {
 .dotPlotSvg {
   color: var(--text-h);
   flex-shrink: 0;
+}
+
+/* ── KS p-value info box ───────────────────────────────────────── */
+
+.ksInfo {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+}
+
+.ksInfoHeader {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 6px;
+}
+
+.ksInfoDesc {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.ksInfoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ksInfoRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ksInfoBadge {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  min-width: 72px;
+  text-align: center;
+}
+
+.ksInfoGood {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.ksInfoWarn {
+  background: rgba(250, 204, 21, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
+.ksInfoBad {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  .ksInfoGood { background: rgba(34, 197, 94, 0.12); color: #4ade80; border-color: rgba(34, 197, 94, 0.25); }
+  .ksInfoWarn { background: rgba(250, 204, 21, 0.12); color: #fbbf24; border-color: rgba(250, 204, 21, 0.25); }
+  .ksInfoBad { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
+}
+
+[data-theme="dark"] .ksInfoGood { background: rgba(34, 197, 94, 0.12); color: #4ade80; border-color: rgba(34, 197, 94, 0.25); }
+[data-theme="dark"] .ksInfoWarn { background: rgba(250, 204, 21, 0.12); color: #fbbf24; border-color: rgba(250, 204, 21, 0.25); }
+[data-theme="dark"] .ksInfoBad { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
+
+/* ── Distribution fit cell ─────────────────────────────────────── */
+
+.distFitName {
+  display: block;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.distFitScore {
+  display: block;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text);
+  margin-top: 2px;
+}
+
+.distFitNa {
+  color: var(--text);
+  opacity: 0.35;
 }

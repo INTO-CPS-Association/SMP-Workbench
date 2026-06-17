@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
   useNodes,
   useEdges,
-  useReactFlow,
   Position,
 } from '@xyflow/react';
 import type { EdgeProps, Node } from '@xyflow/react';
 import styles from './CustomEdge.module.css';
+import { DIST_SHORT } from './TransitionInspector';
+import type { ChosenDistribution } from './TransitionInspector';
+import { useOpenInspector } from './InspectorContext';
 
 const NODE_RADIUS = 40;
 
@@ -29,14 +31,11 @@ function circleEdgePoint(cx: number, cy: number, toX: number, toY: number): [num
 }
 
 export function LabeledEdge({ id, source, target, data, markerEnd, style }: EdgeProps) {
-  const { setEdges } = useReactFlow();
+  const openInspector = useOpenInspector();
   const nodes = useNodes<Node>();
   const allEdges = useEdges();
-  const [editingField, setEditingField] = useState<'probability' | 'avgSojournTime' | null>(null);
-  const [draft, setDraft] = useState('');
   const [hovered, setHovered] = useState(false);
 
-  // Detect whether outgoing probabilities from this source node are out of range
   const sourceSum = allEdges
     .filter(e => e.source === source)
     .reduce((sum, e) => sum + ((e.data?.probability ?? 0) as number), 0);
@@ -56,14 +55,10 @@ export function LabeledEdge({ id, source, target, data, markerEnd, style }: Edge
   let labelY: number;
 
   if (source === target) {
-    // Self-loop: exits top-right, arcs out, re-enters bottom-right
     const r = NODE_RADIUS;
-    const lw = 50;
-    const lh = 45;
-    const sx = srcCx + r * 0.7;
-    const sy = srcCy - r * 0.7;
-    const ex = srcCx + r * 0.7;
-    const ey = srcCy + r * 0.7;
+    const lw = 50, lh = 45;
+    const sx = srcCx + r * 0.7, sy = srcCy - r * 0.7;
+    const ex = srcCx + r * 0.7, ey = srcCy + r * 0.7;
     edgePath = `M ${sx} ${sy} C ${sx + lw} ${sy - lh} ${ex + lw} ${ey + lh} ${ex} ${ey}`;
     labelX = srcCx + r + lw + 8;
     labelY = srcCy;
@@ -72,22 +67,14 @@ export function LabeledEdge({ id, source, target, data, markerEnd, style }: Edge
     const dy = tgtCy - srcCy;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
     const angle = Math.atan2(dy, dx);
-
-    // Perpendicular direction (left of travel). Bidirectional edges travel
-    // in opposite directions so their perpendiculars point to opposite sides,
-    // giving each edge its own clearly separated path and label.
     const perpX = -dy / dist;
     const perpY =  dx / dist;
     const EDGE_OFFSET = 12;
 
     const [bsx, bsy] = circleEdgePoint(srcCx, srcCy, tgtCx, tgtCy);
     const [btx, bty] = circleEdgePoint(tgtCx, tgtCy, srcCx, srcCy);
-
-    const sx = bsx + perpX * EDGE_OFFSET;
-    const sy = bsy + perpY * EDGE_OFFSET;
-    const tx = btx + perpX * EDGE_OFFSET;
-    const ty = bty + perpY * EDGE_OFFSET;
-
+    const sx = bsx + perpX * EDGE_OFFSET, sy = bsy + perpY * EDGE_OFFSET;
+    const tx = btx + perpX * EDGE_OFFSET, ty = bty + perpY * EDGE_OFFSET;
     const [srcPos, tgtPos] = getHandlePositions(angle);
 
     const result = getBezierPath({
@@ -101,30 +88,18 @@ export function LabeledEdge({ id, source, target, data, markerEnd, style }: Edge
     labelY = result[2] + perpY * LABEL_OFFSET;
   }
 
-  const probability     = (data?.probability     ?? 0.0) as number;
-  const avgSojournTime  = (data?.avgSojournTime   ?? 0.0) as number;
+  const probability  = (data?.probability        ?? 0.0) as number;
+  const sojournTimes = (data?.cleanSojournTimes  ?? []) as number[];
+  const chosenDist   = (data?.chosenDistribution ?? null) as ChosenDistribution | null;
 
-  const startEdit = (field: 'probability' | 'avgSojournTime', value: number) => {
-    setEditingField(field);
-    setDraft(String(value));
-  };
+  const displayDist = chosenDist?.name ? (DIST_SHORT[chosenDist.name] ?? chosenDist.name) : null;
 
-  const commit = () => {
-    if (!editingField) return;
-    const num = parseFloat(draft);
-    setEdges(eds =>
-      eds.map(e =>
-        e.id === id
-          ? { ...e, data: { ...e.data, [editingField]: isNaN(num) ? 0.0 : num } }
-          : e
-      )
-    );
-    setEditingField(null);
-  };
+  const fromLabel = (sourceNode.data?.label as string) ?? source;
+  const toLabel   = (targetNode.data?.label as string) ?? target;
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter')  commit();
-    if (e.key === 'Escape') setEditingField(null);
+  const handleDoubleClick = (e: { stopPropagation(): void }) => {
+    e.stopPropagation();
+    openInspector({ edgeId: id, fromLabel, toLabel, sojournTimes, initial: chosenDist, probability });
   };
 
   return (
@@ -132,9 +107,9 @@ export function LabeledEdge({ id, source, target, data, markerEnd, style }: Edge
       <g
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onDoubleClick={handleDoubleClick}
         style={{ cursor: 'pointer' }}
       >
-        {/* Wide invisible stroke for reliable hover detection */}
         <path d={edgePath} fill="none" stroke="rgba(0,0,0,0)" strokeWidth={20} />
         <BaseEdge
           path={edgePath}
@@ -151,6 +126,7 @@ export function LabeledEdge({ id, source, target, data, markerEnd, style }: Edge
           }}
         />
       </g>
+
       <EdgeLabelRenderer>
         <div
           style={{
@@ -162,6 +138,7 @@ export function LabeledEdge({ id, source, target, data, markerEnd, style }: Edge
           className="nodrag nopan"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
+          onDoubleClick={handleDoubleClick}
         >
           <div
             className={styles.label}
@@ -169,38 +146,14 @@ export function LabeledEdge({ id, source, target, data, markerEnd, style }: Edge
           >
             <div className={styles.row}>
               <span className={styles.key}>P</span>
-              {editingField === 'probability' ? (
-                <input
-                  className={styles.input}
-                  value={draft}
-                  onChange={e => setDraft(e.target.value)}
-                  onBlur={commit}
-                  onKeyDown={onKeyDown}
-                  autoFocus
-                />
-              ) : (
-                <span className={styles.value} onClick={() => startEdit('probability', probability)}>
-                  {probability.toFixed(4)}
-                </span>
-              )}
+              <span className={styles.value}>{probability.toFixed(4)}</span>
             </div>
-            <div className={styles.row}>
-              <span className={styles.key}>T</span>
-              {editingField === 'avgSojournTime' ? (
-                <input
-                  className={styles.input}
-                  value={draft}
-                  onChange={e => setDraft(e.target.value)}
-                  onBlur={commit}
-                  onKeyDown={onKeyDown}
-                  autoFocus
-                />
-              ) : (
-                <span className={styles.value} onClick={() => startEdit('avgSojournTime', avgSojournTime)}>
-                  {avgSojournTime.toFixed(4)}s
-                </span>
-              )}
-            </div>
+            {displayDist && (
+              <div className={styles.row}>
+                <span className={styles.key}>D</span>
+                <span className={styles.distValue}>{displayDist}</span>
+              </div>
+            )}
           </div>
         </div>
       </EdgeLabelRenderer>

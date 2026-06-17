@@ -5,6 +5,12 @@ export interface AnalysisNode {
   label: string;
 }
 
+export interface DistributionFit {
+  distribution: string;
+  pValue: number;
+  ksStat: number;
+}
+
 export interface AnalysisEdge {
   id: string;
   source: string;
@@ -13,6 +19,7 @@ export interface AnalysisEdge {
   avgSojournTime: number;
   transitionCount: number;
   cleanSojournTimes: number[];
+  distributionFit?: DistributionFit | null;
 }
 
 export interface QuarantinedEntry {
@@ -58,11 +65,10 @@ export interface AnalysisResult {
 
 export async function analyzeSojournOutliers(
   transitions: SuspiciousTransition[],
-  method: 'lof' | 'iqr' = 'lof',
 ): Promise<SuspiciousTransition[]> {
   const response = await client.post<SuspiciousTransition[]>(
     '/api/analyze/sojourn-outliers',
-    { transitions, method },
+    { transitions, method: 'iqr' },
   );
   return response.data;
 }
@@ -70,13 +76,11 @@ export async function analyzeSojournOutliers(
 export async function analyzeFilesStreaming(
   files: FileList,
   onProgress: (percent: number, message: string) => void,
-  method: 'lof' | 'iqr' = 'lof',
-  fileMethod: 'lof' | 'iqr' = 'iqr',
 ): Promise<AnalysisResult> {
   const formData = new FormData();
   Array.from(files).forEach((file) => formData.append('files', file));
 
-  const response = await fetch(`http://localhost:8000/api/analyze/stream?method=${method}&file_method=${fileMethod}`, {
+  const response = await fetch('http://localhost:8000/api/analyze/stream?method=iqr&file_method=iqr', {
     method: 'POST',
     body: formData,
   });

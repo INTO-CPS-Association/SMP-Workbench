@@ -26,6 +26,10 @@ import { RoundDefaultNode } from './CustomNodes';
 import { LabeledEdge } from './CustomEdge';
 import { store } from '../store';
 import type { AnalysisResult } from '../api/analysis';
+import { InspectorContext } from './InspectorContext';
+import type { InspectorRequest } from './InspectorContext';
+import { TransitionInspector } from './TransitionInspector';
+import type { SaveResult } from './TransitionInspector';
 
 const nodeTypes = { circleDefault: RoundDefaultNode };
 const edgeTypes = { labeled: LabeledEdge };
@@ -67,6 +71,7 @@ function buildFromAnalysis(result: AnalysisResult): { nodes: Node[]; edges: Edge
       avgSojournTime: e.avgSojournTime,
       transitionCount: e.transitionCount,
       cleanSojournTimes: e.cleanSojournTimes,
+      distributionFit: e.distributionFit ?? null,
     },
   }));
   return { nodes, edges };
@@ -81,6 +86,7 @@ const DnDFlow = () => {
   const { screenToFlowPosition } = useReactFlow();
   const [type] = useDnD();
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
+  const [inspectorReq, setInspectorReq] = useState<InspectorRequest | null>(null);
 
   // Populate graph from analysis result, loaded project, or persisted session graph
   useEffect(() => {
@@ -134,7 +140,22 @@ const DnDFlow = () => {
     [screenToFlowPosition, type, setNodes],
   );
 
+  const warnMissingDistributions = useCallback((): boolean => {
+    const missing = edges.filter(e => !(e.data as any)?.chosenDistribution);
+    if (!missing.length) return true;
+    const lines = missing.map(e => {
+      const src = (nodes.find(n => n.id === e.source)?.data?.label as string) ?? e.source;
+      const tgt = (nodes.find(n => n.id === e.target)?.data?.label as string) ?? e.target;
+      return `  • ${src} → ${tgt}`;
+    });
+    return window.confirm(
+      `${missing.length} transition${missing.length !== 1 ? 's have' : ' has'} no distribution assigned:\n\n` +
+      `${lines.join('\n')}\n\nSave anyway?`,
+    );
+  }, [nodes, edges]);
+
   const onSave = useCallback(() => {
+    if (!warnMissingDistributions()) return;
     const project = {
       nodes,
       edges,
@@ -148,9 +169,10 @@ const DnDFlow = () => {
     a.download = 'graph.json';
     a.click();
     URL.revokeObjectURL(url);
-  }, [nodes, edges]);
+  }, [nodes, edges, warnMissingDistributions]);
 
   const onSaveAs = useCallback(async () => {
+    if (!warnMissingDistributions()) return;
     const project = {
       nodes,
       edges,
@@ -179,7 +201,7 @@ const DnDFlow = () => {
       a.click();
       URL.revokeObjectURL(url);
     }
-  }, [nodes, edges]);
+  }, [nodes, edges, warnMissingDistributions]);
 
   const onStatistics = useCallback(() => {
     store.setCurrentGraph({ nodes, edges });
@@ -190,6 +212,18 @@ const DnDFlow = () => {
     store.reset();
     navigate('/');
   }, [navigate]);
+
+  const handleInspectorSave = useCallback((result: SaveResult) => {
+    if (!inspectorReq) return;
+    setEdges(eds =>
+      eds.map(e =>
+        e.id === inspectorReq.edgeId
+          ? { ...e, data: { ...e.data, chosenDistribution: result.distribution, probability: result.probability } }
+          : e,
+      ),
+    );
+    setInspectorReq(null);
+  }, [inspectorReq, setEdges]);
 
   // Detect source states whose outgoing probabilities don't sum to [0.99, 1.0]
   const invalidSources = useMemo(() => {
@@ -208,6 +242,7 @@ const DnDFlow = () => {
   }, [edges, nodes]);
 
   return (
+    <InspectorContext.Provider value={setInspectorReq}>
     <div className="dndflow">
       <div
         className="reactflow-wrapper"
@@ -268,6 +303,19 @@ const DnDFlow = () => {
       </div>
       <Sidebar onSave={onSave} onSaveAs={onSaveAs} onStatistics={onStatistics} onReset={onReset} />
     </div>
+
+    {inspectorReq && (
+      <TransitionInspector
+        fromLabel={inspectorReq.fromLabel}
+        toLabel={inspectorReq.toLabel}
+        sojournTimes={inspectorReq.sojournTimes}
+        initial={inspectorReq.initial}
+        probability={inspectorReq.probability}
+        onClose={() => setInspectorReq(null)}
+        onSave={handleInspectorSave}
+      />
+    )}
+    </InspectorContext.Provider>
   );
 };
 

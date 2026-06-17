@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Edge, Node } from '@xyflow/react';
 import styles from './Statistics.module.css';
@@ -23,12 +23,12 @@ interface EffectiveStat {
 
 interface DotData {
   value: number;
-  color: 'blue' | 'orange' | 'red';
+  color: 'blue' | 'orange' | 'red' | 'green';
   onClick?: () => void;
   large?: boolean;
 }
 
-const DOT_FILL = { blue: '#3b82f6', orange: '#f59e0b', red: '#ef4444' } as const;
+const DOT_FILL = { blue: '#3b82f6', orange: '#f59e0b', red: '#ef4444', green: '#22c55e' } as const;
 
 function computeEffectiveStats(
   edges: Edge[],
@@ -119,15 +119,13 @@ function DotPlot({ dots, avg, unit = '', precision = 2 }: {
   const range = hi - lo || 1;
   const cx = (v: number) => PAD + ((v - lo) / range) * (W - 2 * PAD);
   const cy = H / 2;
-  const layerOrder: Record<string, number> = { blue: 0, orange: 1, red: 2 };
+  const layerOrder: Record<string, number> = { blue: 0, orange: 1, green: 2, red: 3 };
   const sorted = [...dots].sort((a, b) => (layerOrder[a.color] ?? 0) - (layerOrder[b.color] ?? 0));
-  const current = dots.find(d => d.color === 'red');
   return (
     <div className={styles.dotPlotWrap}>
       <div className={styles.dotPlotRight}>
         <div className={styles.dotPlotMeta}>
           <span className={styles.dotPlotAvg}>avg: {avg.toFixed(precision)}{unit}</span>
-          {current && <span className={styles.dotPlotAvg}>outlier: {current.value.toFixed(precision)}{unit}</span>}
         </div>
         <svg width={W} height={H} className={styles.dotPlotSvg}>
           <line x1={PAD} y1={cy} x2={W - PAD} y2={cy} stroke="currentColor" strokeOpacity={0.2} strokeWidth={1} />
@@ -138,12 +136,14 @@ function DotPlot({ dots, avg, unit = '', precision = 2 }: {
               key={idx}
               cx={cx(d.value)}
               cy={cy}
-              r={d.color === 'red' || d.large ? 5.5 : 4}
+              r={d.color === 'red' || d.color === 'green' || d.large ? 5.5 : 4}
               fill={DOT_FILL[d.color]}
-              opacity={d.color === 'red' ? 1 : 0.7}
+              opacity={d.color === 'red' || d.color === 'green' ? 1 : 0.7}
               style={{ cursor: d.onClick ? 'pointer' : 'default' }}
               onClick={d.onClick}
-            />
+            >
+              <title>{d.value.toFixed(precision)}{unit}</title>
+            </circle>
           ))}
         </svg>
       </div>
@@ -171,10 +171,23 @@ export default function Statistics() {
   const [fileOutlierData, setFileOutlierData] = useState<Map<string, SuspiciousTransition[]>>(new Map());
   // Keys: "filename::fromState::toState::transitionIndex"
   const [includedFileEntries, setIncludedFileEntries] = useState<Set<string>>(new Set());
-  const [expandedQuarantined, setExpandedQuarantined] = useState<Set<number>>(new Set());
-  const [expandedSuspicious, setExpandedSuspicious] = useState<Set<string>>(new Set());
+  const [expandedQuarantinedFiles, setExpandedQuarantinedFiles] = useState<Set<string>>(new Set());
+  const [expandedFilesSection, setExpandedFilesSection] = useState(false);
+  const [expandedLogSection, setExpandedLogSection] = useState(false);
   // Filenames of normal (non-suspicious) files manually flagged for exclusion via dot click
   const [manuallyExcludedNormalFiles, setManuallyExcludedNormalFiles] = useState<Set<string>>(new Set());
+
+  const filesSectionRef = useRef<HTMLDivElement>(null);
+  const logSectionRef = useRef<HTMLDivElement>(null);
+  const fileCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const scrollToTop = () => document.getElementById('stats-page-top')?.scrollIntoView({ behavior: 'smooth' });
+  const closeFilesSection = () => { setExpandedFilesSection(false); filesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const closeLogSection   = () => { setExpandedLogSection(false);   logSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const closeFileCard = (name: string) => {
+    setExpandedQuarantinedFiles(prev => { const n = new Set(prev); n.delete(name); return n; });
+    fileCardRefs.current.get(name)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const toggleEntry = (idx: number) => {
     setIncluded(prev => {
@@ -188,7 +201,7 @@ export default function Statistics() {
     setLoadingFiles(prev => new Set(prev).add(filename));
     const sf = suspiciousFiles.find((f: SuspiciousFile) => f.filename === filename);
     try {
-      const scored = sf ? await analyzeSojournOutliers(sf.transitions, store.getOutlierMethod()) : [];
+      const scored = sf ? await analyzeSojournOutliers(sf.transitions) : [];
       setFileOutlierData(prev => new Map(prev).set(filename, scored));
     } catch {
       setFileOutlierData(prev => new Map(prev).set(filename, sf?.transitions ?? []));
@@ -227,20 +240,52 @@ export default function Statistics() {
     });
   };
 
-  const uniqueSuspiciousFilenames = useMemo(
-    () => [...new Set(suspiciousFiles.map((sf: SuspiciousFile) => sf.filename))],
-    [suspiciousFiles],
-  );
-
   const sortedSuspiciousFiles = useMemo(
     () => [...suspiciousFiles].sort((a: SuspiciousFile, b: SuspiciousFile) => a.filename.localeCompare(b.filename)),
     [suspiciousFiles],
   );
 
-  const allPairsSelected = sortedSuspiciousFiles.length > 0 &&
-    sortedSuspiciousFiles.every((sf: SuspiciousFile) =>
-      includedFilePairs.has(`${sf.filename}::${sf.fromState}::${sf.toState}`) || loadingFiles.has(sf.filename)
-    );
+  // Groups all sojourn-time records by filename → (fromState::toState) → sojourn times.
+  // flaggedPairs tracks which (from::to) keys triggered the file exclusion.
+  const filesByName = useMemo(() => {
+    const map = new Map<string, {
+      flaggedPairs: Map<string, SuspiciousFile>;
+      pairTimes: Map<string, number[]>;
+    }>();
+    for (const sf of sortedSuspiciousFiles) {
+      if (!map.has(sf.filename)) {
+        const pairTimes = new Map<string, number[]>();
+        for (const t of sf.transitions) {
+          const k = `${t.fromState}::${t.toState}`;
+          const arr = pairTimes.get(k);
+          if (arr) arr.push(t.sojournTime);
+          else pairTimes.set(k, [t.sojournTime]);
+        }
+        map.set(sf.filename, { flaggedPairs: new Map(), pairTimes });
+      }
+      const entry = map.get(sf.filename)!;
+      const flaggedKey = `${sf.fromState}::${sf.toState}`;
+      entry.flaggedPairs.set(flaggedKey, sf);
+      // Ensure the flagged pair appears even when sf.transitions is empty
+      if (!entry.pairTimes.has(flaggedKey)) entry.pairTimes.set(flaggedKey, []);
+    }
+    return map;
+  }, [sortedSuspiciousFiles]);
+
+  const sortedFilenames = useMemo(() => [...filesByName.keys()].sort(), [filesByName]);
+
+  const allPairsSelected = useMemo(() => {
+    let total = 0, selected = 0;
+    for (const [filename, fd] of filesByName) {
+      for (const [pairKey] of fd.pairTimes) {
+        const sep = pairKey.indexOf('::');
+        const f = pairKey.slice(0, sep), t = pairKey.slice(sep + 2);
+        total++;
+        if (includedFilePairs.has(`${filename}::${f}::${t}`) || loadingFiles.has(filename)) selected++;
+      }
+    }
+    return total > 0 && selected === total;
+  }, [filesByName, includedFilePairs, loadingFiles]);
 
   const toggleAllPairs = () => {
     if (allPairsSelected) {
@@ -249,24 +294,32 @@ export default function Statistics() {
       setIncludedFileEntries(new Set());
       setLoadingFiles(new Set());
     } else {
-      setIncludedFilePairs(prev => {
-        const n = new Set(prev);
-        sortedSuspiciousFiles.forEach((sf: SuspiciousFile) => n.add(`${sf.filename}::${sf.fromState}::${sf.toState}`));
-        return n;
-      });
-      const unscored = [...new Set(
-        sortedSuspiciousFiles
-          .filter((sf: SuspiciousFile) => !fileOutlierData.has(sf.filename) && !loadingFiles.has(sf.filename))
-          .map((sf: SuspiciousFile) => sf.filename)
-      )];
-      unscored.forEach(scoreFile);
+      const keys = new Set(includedFilePairs);
+      const toScore: string[] = [];
+      for (const [filename, fd] of filesByName) {
+        for (const [pairKey] of fd.pairTimes) {
+          const sep = pairKey.indexOf('::');
+          const f = pairKey.slice(0, sep), t = pairKey.slice(sep + 2);
+          keys.add(`${filename}::${f}::${t}`);
+        }
+        if (!fileOutlierData.has(filename) && !loadingFiles.has(filename)) {
+          toScore.push(filename);
+        }
+      }
+      setIncludedFilePairs(keys);
+      toScore.forEach(fn => scoreFile(fn));
     }
   };
 
-  const allSelected = quarantined.length > 0 && included.size === quarantined.length;
-  const toggleAll = () => {
-    setIncluded(allSelected ? new Set() : new Set(quarantined.map((_, i) => i)));
-  };
+  const quarantinedByPair = useMemo(() => {
+    const map = new Map<string, { fromState: string; toState: string; indices: number[] }>();
+    quarantined.forEach((q, i) => {
+      const key = `${q.fromState}-${q.toState}`;
+      if (!map.has(key)) map.set(key, { fromState: q.fromState, toState: q.toState, indices: [] });
+      map.get(key)!.indices.push(i);
+    });
+    return map;
+  }, [quarantined]);
 
   const reIncludedFileOutliers = useMemo(() => {
     const result: Array<{ filename: string; pairKey: string; transitionIdx: number } & SuspiciousTransition> = [];
@@ -280,13 +333,46 @@ export default function Statistics() {
     return result;
   }, [fileOutlierData, includedFilePairs]);
 
-  const allFileEntriesSelected = reIncludedFileOutliers.length > 0 &&
-    reIncludedFileOutliers.every(o => includedFileEntries.has(`${o.pairKey}::${o.transitionIdx}`));
-  const toggleAllFileEntries = () => {
-    if (allFileEntriesSelected) {
-      setIncludedFileEntries(new Set());
+  const fileOutliersByEdgeKey = useMemo(() => {
+    const map = new Map<string, Array<{ pairKey: string; transitionIdx: number; sojournTime: number; fromState: string; toState: string }>>();
+    for (const o of reIncludedFileOutliers) {
+      const edgeKey = `${o.fromState}-${o.toState}`;
+      const arr = map.get(edgeKey) ?? [];
+      arr.push({ pairKey: o.pairKey, transitionIdx: o.transitionIdx, sojournTime: o.sojournTime, fromState: o.fromState, toState: o.toState });
+      map.set(edgeKey, arr);
+    }
+    return map;
+  }, [reIncludedFileOutliers]);
+
+  const allOutlierEdgeKeys = useMemo(() => {
+    const keys = new Set([...quarantinedByPair.keys(), ...fileOutliersByEdgeKey.keys()]);
+    return [...keys];
+  }, [quarantinedByPair, fileOutliersByEdgeKey]);
+
+  const allSelected = useMemo(() =>
+    allOutlierEdgeKeys.length > 0 && allOutlierEdgeKeys.every(edgeKey => {
+      const pd = quarantinedByPair.get(edgeKey);
+      const fo = fileOutliersByEdgeKey.get(edgeKey) ?? [];
+      return (!pd || pd.indices.every(i => included.has(i))) &&
+        fo.every(o => includedFileEntries.has(`${o.pairKey}::${o.transitionIdx}`));
+    }),
+  [allOutlierEdgeKeys, quarantinedByPair, fileOutliersByEdgeKey, included, includedFileEntries]);
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setIncluded(new Set());
+      setIncludedFileEntries(prev => {
+        const next = new Set(prev);
+        for (const o of reIncludedFileOutliers) next.delete(`${o.pairKey}::${o.transitionIdx}`);
+        return next;
+      });
     } else {
-      setIncludedFileEntries(new Set(reIncludedFileOutliers.map(o => `${o.pairKey}::${o.transitionIdx}`)));
+      setIncluded(new Set(quarantined.map((_, i) => i)));
+      setIncludedFileEntries(prev => {
+        const next = new Set(prev);
+        for (const o of reIncludedFileOutliers) next.add(`${o.pairKey}::${o.transitionIdx}`);
+        return next;
+      });
     }
   };
 
@@ -301,6 +387,29 @@ export default function Statistics() {
   }, [edges]);
 
   const [excludedClean, setExcludedClean] = useState<Map<string, Set<number>>>(new Map());
+
+  const skipFirstSave = useRef(true);
+
+  // Restore UI state saved before navigating away
+  useEffect(() => {
+    const saved = store.getStatsUIState();
+    if (saved) {
+      setIncluded(new Set(saved.included));
+      setIncludedFilePairs(new Set(saved.includedFilePairs));
+      setFileOutlierData(new Map(saved.fileOutlierData));
+      setIncludedFileEntries(new Set(saved.includedFileEntries));
+      setExcludedClean(new Map(saved.excludedClean));
+      setManuallyExcludedNormalFiles(new Set(saved.manuallyExcludedNormalFiles));
+    }
+  }, []);
+
+  // Persist UI state on every relevant change.
+  // Skip the first firing (mount) because it runs with the empty initial state,
+  // before the restore effect's setState calls have propagated.
+  useEffect(() => {
+    if (skipFirstSave.current) { skipFirstSave.current = false; return; }
+    store.setStatsUIState({ included, includedFilePairs, fileOutlierData, includedFileEntries, excludedClean, manuallyExcludedNormalFiles });
+  }, [included, includedFilePairs, fileOutlierData, includedFileEntries, excludedClean, manuallyExcludedNormalFiles]);
 
   const edgeSourceTarget = useMemo(() => {
     const map = new Map<string, { source: string; target: string }>();
@@ -380,7 +489,7 @@ export default function Statistics() {
   const fromStates = Object.keys(grouped).sort();
 
   return (
-    <div className={styles.page}>
+    <div id="stats-page-top" className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>Transition Statistics</h1>
         <div className={styles.headerActions}>
@@ -389,148 +498,6 @@ export default function Statistics() {
           <button className={`${styles.navBtn} ${styles.resetBtn}`} onClick={handleReset}>New Analysis</button>
         </div>
       </div>
-
-      {suspiciousFiles.length > 0 && (
-        <div className={styles.suspiciousSection}>
-          <div className={styles.quarantineHeader}>
-            <div>
-              <h2 className={styles.suspiciousTitle}>Quarantined Files</h2>
-              <p className={styles.suspiciousDesc}>
-                {uniqueSuspiciousFilenames.length === 1 ? '1 file was' : `${uniqueSuspiciousFilenames.length} files were`} quarantined
-                for containing an anomalously high number of a particular transition.
-                Check individual transitions to re-include them — statistics update automatically.
-              </p>
-            </div>
-            <button className={styles.selectAllBtn} onClick={toggleAllPairs}>
-              {allPairsSelected ? 'Deselect all' : 'Select all'}
-            </button>
-          </div>
-          <div className={styles.tableWrapper}>
-            <table>
-              <thead>
-                <tr>
-                  <th className={styles.checkTh}></th>
-                  <th>File</th>
-                  <th>Transition</th>
-                  <th>Count</th>
-                  <th>Expected (avg)</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedSuspiciousFiles.map((sf: SuspiciousFile, i: number) => {
-                  const isFirstInGroup = i === 0 || sortedSuspiciousFiles[i - 1].filename !== sf.filename;
-                  const isLoading = loadingFiles.has(sf.filename);
-                  const pairKey = `${sf.filename}::${sf.fromState}::${sf.toState}`;
-                  const isIncluded = includedFilePairs.has(pairKey);
-                  return (
-                    <>
-                    <tr
-                      key={i}
-                      className={[
-                        isIncluded ? styles.includedRow : '',
-                        !isFirstInGroup ? styles.fileGroupContinuation : '',
-                      ].filter(Boolean).join(' ') || undefined}
-                      onClick={() => !isLoading && toggleFilePair(sf.filename, sf.fromState, sf.toState)}
-                      style={{ cursor: isLoading ? 'wait' : 'pointer' }}
-                    >
-                      <td className={styles.checkTd}>
-                        <input
-                          type="checkbox"
-                          checked={isIncluded}
-                          disabled={isLoading}
-                          onChange={() => toggleFilePair(sf.filename, sf.fromState, sf.toState)}
-                          onClick={(e) => e.stopPropagation()}
-                          className={styles.checkbox}
-                        />
-                      </td>
-                      <td className={styles.suspiciousFilename}>
-                        {isFirstInGroup && (
-                          <>
-                            {sf.filename}
-                            {isLoading && <span className={styles.loadingBadge}>scoring…</span>}
-                          </>
-                        )}
-                      </td>
-                      <td>{sf.fromState} → {sf.toState}</td>
-                      <td className={styles.suspiciousCount}>{sf.count}</td>
-                      <td>{sf.avgCount.toFixed(1)}</td>
-                      <td>
-                        <button
-                          className={styles.detailsBtn}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedSuspicious(prev => {
-                              const n = new Set(prev);
-                              n.has(pairKey) ? n.delete(pairKey) : n.add(pairKey);
-                              return n;
-                            });
-                          }}
-                        >
-                          {expandedSuspicious.has(pairKey) ? 'Hide Details' : 'Details'}
-                        </button>
-                      </td>
-                    </tr>
-                    {expandedSuspicious.has(pairKey) && (() => {
-                      // Other suspicious files for the same transition pair (not this file)
-                      const otherSusp = sortedSuspiciousFiles.filter(
-                        (other: SuspiciousFile) =>
-                          other.filename !== sf.filename &&
-                          other.fromState === sf.fromState &&
-                          other.toState === sf.toState,
-                      );
-                      // Map count value → list of suspicious files sharing that count
-                      const otherCountMap = new Map<number, SuspiciousFile[]>();
-                      for (const other of otherSusp) {
-                        const arr = otherCountMap.get(other.count) ?? [];
-                        arr.push(other);
-                        otherCountMap.set(other.count, arr);
-                      }
-                      let currentMarked = false;
-                      const usedIdx = new Map<number, number>();
-                      const dots: DotData[] = (sf.allCounts ?? []).map((c, dotIdx) => {
-                        const dotFilename: string | undefined = (sf.allFilenames ?? [])[dotIdx];
-                        if (c === sf.count && !currentMarked) {
-                          currentMarked = true;
-                          return { value: c, color: includedFilePairs.has(pairKey) ? 'blue' : 'red', onClick: () => toggleFilePair(sf.filename, sf.fromState, sf.toState), large: true };
-                        }
-                        if (otherCountMap.has(c)) {
-                          const candidates = otherCountMap.get(c)!;
-                          const idx = usedIdx.get(c) ?? 0;
-                          const other = candidates[idx % candidates.length];
-                          usedIdx.set(c, idx + 1);
-                          const otherKey = `${other.filename}::${other.fromState}::${other.toState}`;
-                          const isReIncluded = includedFilePairs.has(otherKey);
-                          return {
-                            value: c,
-                            color: isReIncluded ? 'blue' as const : 'orange' as const,
-                            onClick: () => toggleFilePair(other.filename, other.fromState, other.toState),
-                          };
-                        }
-                        // Normal file dot — clickable to manually flag for exclusion
-                        const isExcluded = dotFilename ? manuallyExcludedNormalFiles.has(dotFilename) : false;
-                        return {
-                          value: c,
-                          color: isExcluded ? 'orange' as const : 'blue' as const,
-                          onClick: dotFilename ? () => toggleManualExcludeFile(dotFilename) : undefined,
-                        };
-                      });
-                      return (
-                        <tr key={`detail-sf-${i}`} className={styles.detailRow}>
-                          <td colSpan={6}>
-                            <DotPlot dots={dots} avg={sf.avgCount} precision={0} />
-                          </td>
-                        </tr>
-                      );
-                    })()}
-                    </>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       <div className={styles.tableWrapper}>
         <table>
@@ -574,21 +541,272 @@ export default function Statistics() {
         </table>
       </div>
 
-      {quarantined.length > 0 && (
-        <div className={styles.quarantineSection}>
-          <div className={styles.quarantineHeader}>
-            <div>
-              <h2 className={styles.quarantineTitle}>Quarantined Log Entries</h2>
-              <p className={styles.quarantineDesc}>
-                {quarantined.length} {quarantined.length === 1 ? 'entry was' : 'entries were'} flagged as
-                outliers and excluded from the statistics above. Check entries to re-include them —
-                values update automatically.
-              </p>
-            </div>
-            <button className={styles.selectAllBtn} onClick={toggleAll}>
-              {allSelected ? 'Deselect all' : 'Select all'}
-            </button>
+      {sortedFilenames.length > 0 && (
+        <div ref={filesSectionRef} className={styles.sectionDropdown}>
+          <div
+            className={`${styles.sectionDropdownHeader} ${!expandedFilesSection ? styles.sectionDropdownCollapsed : ''}`}
+            onClick={() => setExpandedFilesSection(p => !p)}
+          >
+            <h2>Quarantined Files</h2>
+            <span className={styles.sectionDropdownCount}>{sortedFilenames.length} {sortedFilenames.length === 1 ? 'file' : 'files'}</span>
+            <span className={styles.fileBlockChevron}>{expandedFilesSection ? '▼' : '▶'}</span>
           </div>
+          {expandedFilesSection && (
+            <div className={styles.sectionDropdownBody}>
+              <p className={styles.sectionDropdownDesc}>
+                {sortedFilenames.length === 1 ? '1 file was' : `${sortedFilenames.length} files were`} excluded
+                for having an anomalously high transition count. All transitions from each file are listed —
+                the transition that triggered exclusion is highlighted. Check a transition to re-include its data.
+              </p>
+
+          {sortedFilenames.map(filename => {
+            const fileData = filesByName.get(filename)!;
+            const isLoading = loadingFiles.has(filename);
+            const isExpanded = expandedQuarantinedFiles.has(filename);
+            const isModified = [...includedFilePairs].some(k => k.startsWith(`${filename}::`));
+            const sortedPairs = [...fileData.pairTimes.entries()].sort(([a], [b]) => a.localeCompare(b));
+            const nonFlaggedPairs = sortedPairs.filter(([pairKey]) => !fileData.flaggedPairs.has(pairKey));
+            const allNonFlaggedIncluded = nonFlaggedPairs.length > 0 && nonFlaggedPairs.every(([pairKey]) => {
+              const sep = pairKey.indexOf('::');
+              return includedFilePairs.has(`${filename}::${pairKey.slice(0, sep)}::${pairKey.slice(sep + 2)}`);
+            });
+            const toggleNonFlagged = (e: React.MouseEvent) => {
+              e.stopPropagation();
+              const keys = nonFlaggedPairs.map(([pairKey]) => {
+                const sep = pairKey.indexOf('::');
+                return `${filename}::${pairKey.slice(0, sep)}::${pairKey.slice(sep + 2)}`;
+              });
+              if (allNonFlaggedIncluded) {
+                const next = new Set(includedFilePairs);
+                keys.forEach(k => next.delete(k));
+                setIncludedFilePairs(next);
+                const nextEntries = new Set(includedFileEntries);
+                for (const k of keys) for (const ek of [...nextEntries]) if (ek.startsWith(`${k}::`)) nextEntries.delete(ek);
+                setIncludedFileEntries(nextEntries);
+                if (![...next].some(k => k.startsWith(`${filename}::`)))
+                  setFileOutlierData(prev => { const n = new Map(prev); n.delete(filename); return n; });
+              } else {
+                const next = new Set(includedFilePairs);
+                keys.forEach(k => next.add(k));
+                setIncludedFilePairs(next);
+                if (!fileOutlierData.has(filename) && !loadingFiles.has(filename)) scoreFile(filename);
+              }
+            };
+            const toggleFileExpand = () => setExpandedQuarantinedFiles(prev => {
+              const n = new Set(prev);
+              n.has(filename) ? n.delete(filename) : n.add(filename);
+              return n;
+            });
+
+            return (
+              <div key={filename} className={styles.fileBlock} ref={el => { if (el) fileCardRefs.current.set(filename, el); else fileCardRefs.current.delete(filename); }}>
+                <div
+                  className={`${styles.fileBlockHeader} ${!isExpanded ? styles.fileBlockHeaderCollapsed : ''}`}
+                  onClick={toggleFileExpand}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  <span className={styles.suspiciousFilename}>{filename}</span>
+                  {isLoading && <span className={styles.loadingBadge}>scoring…</span>}
+                  {isModified && !isLoading && <span className={styles.modifiedBadge}>modified</span>}
+                  <span className={styles.fileBlockChevron}>{isExpanded ? '▼' : '▶'}</span>
+                </div>
+                {isExpanded && <>
+                <div className={styles.tableWrapper}>
+                  <table>
+                    {nonFlaggedPairs.length > 0 && (
+                      <thead>
+                        <tr>
+                          <th colSpan={3} className={styles.selectBarCell}>
+                            <button className={styles.selectNonFlaggedBtn} onClick={toggleNonFlagged}>
+                              {allNonFlaggedIncluded ? 'Deselect non-flagged' : 'Include non-flagged'}
+                            </button>
+                          </th>
+                        </tr>
+                      </thead>
+                    )}
+                    <tbody>
+                      {sortedPairs.map(([pairKey, pairTimes]) => {
+                        const sep = pairKey.indexOf('::');
+                        const fromState = pairKey.slice(0, sep);
+                        const toState = pairKey.slice(sep + 2);
+                        const fullPairKey = `${filename}::${fromState}::${toState}`;
+                        const isIncluded = includedFilePairs.has(fullPairKey);
+                        const isFlagged = fileData.flaggedPairs.has(pairKey);
+                        const sfInfo = fileData.flaggedPairs.get(pairKey);
+                        return (
+                          <Fragment key={pairKey}>
+                            <tr
+                              className={
+                                isIncluded ? styles.includedRow
+                                : isFlagged ? styles.flaggedRow
+                                : undefined
+                              }
+                              onClick={() => !isLoading && toggleFilePair(filename, fromState, toState)}
+                              style={{ cursor: isLoading ? 'wait' : 'pointer' }}
+                            >
+                              <td className={styles.checkTd}>
+                                <input
+                                  type="checkbox"
+                                  checked={isIncluded}
+                                  disabled={isLoading}
+                                  onChange={() => toggleFilePair(filename, fromState, toState)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={styles.checkbox}
+                                />
+                              </td>
+                              <td>{fromState} → {toState}</td>
+                              <td>
+                                {isFlagged && sfInfo && (
+                                  <span className={styles.causeBadge}>
+                                    cause · {sfInfo.count} vs avg {sfInfo.avgCount.toFixed(1)}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                            {(() => {
+                              if (isFlagged && sfInfo) {
+                                // Count distribution — shows how many times each file has this transition
+                                const otherSusp = sortedSuspiciousFiles.filter(
+                                  (other: SuspiciousFile) =>
+                                    other.filename !== filename &&
+                                    other.fromState === fromState &&
+                                    other.toState === toState,
+                                );
+                                const otherCountMap = new Map<number, SuspiciousFile[]>();
+                                for (const other of otherSusp) {
+                                  const arr = otherCountMap.get(other.count) ?? [];
+                                  arr.push(other);
+                                  otherCountMap.set(other.count, arr);
+                                }
+                                let currentMarked = false;
+                                const usedIdx = new Map<number, number>();
+                                const dots: DotData[] = (sfInfo.allCounts ?? []).map((c, dotIdx) => {
+                                  const dotFilename: string | undefined = (sfInfo.allFilenames ?? [])[dotIdx];
+                                  if (c === sfInfo.count && !currentMarked) {
+                                    currentMarked = true;
+                                    return { value: c, color: isIncluded ? 'green' as const : 'red' as const, onClick: () => toggleFilePair(filename, fromState, toState), large: true };
+                                  }
+                                  if (otherCountMap.has(c)) {
+                                    const candidates = otherCountMap.get(c)!;
+                                    const idx = usedIdx.get(c) ?? 0;
+                                    const other = candidates[idx % candidates.length];
+                                    usedIdx.set(c, idx + 1);
+                                    const otherKey = `${other.filename}::${other.fromState}::${other.toState}`;
+                                    return {
+                                      value: c,
+                                      color: includedFilePairs.has(otherKey) ? 'green' as const : 'orange' as const,
+                                      onClick: () => toggleFilePair(other.filename, other.fromState, other.toState),
+                                    };
+                                  }
+                                  const isExcluded = dotFilename ? manuallyExcludedNormalFiles.has(dotFilename) : false;
+                                  return {
+                                    value: c,
+                                    color: isExcluded ? 'orange' as const : 'blue' as const,
+                                    onClick: dotFilename ? () => toggleManualExcludeFile(dotFilename) : undefined,
+                                  };
+                                });
+                                return dots.length > 0 ? (
+                                  <tr className={styles.detailRow}>
+                                    <td colSpan={3}>
+                                      <DotPlot dots={dots} avg={sfInfo.avgCount} precision={0} />
+                                    </td>
+                                  </tr>
+                                ) : null;
+                              }
+
+                              // Sojourn time distribution for non-flagged transitions
+                              const edgeId = `${fromState}-${toState}`;
+                              const edgeDetail = edgeDetailsByPair.get(edgeId);
+                              const cleanTimes = edgeDetail?.times ?? [];
+                              const cleanAvg = edgeDetail?.avg ?? 0;
+                              const excl = excludedClean.get(edgeId) ?? new Set<number>();
+                              const dots: DotData[] = [
+                                ...cleanTimes.map((v, idx) => ({
+                                  value: v,
+                                  color: excl.has(idx) ? 'orange' as const : 'blue' as const,
+                                  onClick: () => toggleCleanEntry(edgeId, idx),
+                                })),
+                                ...pairTimes.map(v => ({
+                                  value: v,
+                                  color: isIncluded ? 'green' as const : 'red' as const,
+                                  onClick: () => toggleFilePair(filename, fromState, toState),
+                                })),
+                              ];
+                              const avg = cleanTimes.length > 0
+                                ? cleanAvg
+                                : pairTimes.length > 0
+                                  ? pairTimes.reduce((a, b) => a + b, 0) / pairTimes.length
+                                  : 0;
+                              return dots.length > 0 ? (
+                                <tr className={styles.detailRow}>
+                                  <td colSpan={3}>
+                                    <DotPlot dots={dots} avg={avg} unit="s" />
+                                  </td>
+                                </tr>
+                              ) : null;
+                            })()}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                    {nonFlaggedPairs.length > 0 && (
+                      <tfoot>
+                        <tr>
+                          <td colSpan={3} className={styles.selectBarCell}>
+                            <button className={styles.selectNonFlaggedBtn} onClick={toggleNonFlagged}>
+                              {allNonFlaggedIncluded ? 'Deselect non-flagged' : 'Include non-flagged'}
+                            </button>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+                <div className={styles.fileBlockFooter}>
+                  <button className={styles.sectionCloseBtn} onClick={() => closeFileCard(filename)}>
+                    Close ▲
+                  </button>
+                </div>
+                </>}
+              </div>
+            );
+          })}
+
+              <div className={styles.sectionDropdownFooter}>
+                <button className={styles.sectionCloseBtn} onClick={closeFilesSection}>Close ▲</button>
+                <button className={styles.backToTopBtn} onClick={scrollToTop}>↑ Back to top</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {allOutlierEdgeKeys.length > 0 && (
+        <div ref={logSectionRef} className={styles.sectionDropdown}>
+          <div
+            className={`${styles.sectionDropdownHeader} ${!expandedLogSection ? styles.sectionDropdownCollapsed : ''}`}
+            onClick={() => setExpandedLogSection(p => !p)}
+          >
+            <h2>Quarantined Log Entries</h2>
+            <span className={styles.sectionDropdownCount}>
+              {quarantined.length + reIncludedFileOutliers.length} {quarantined.length + reIncludedFileOutliers.length === 1 ? 'entry' : 'entries'}
+            </span>
+            <span className={styles.fileBlockChevron}>{expandedLogSection ? '▼' : '▶'}</span>
+          </div>
+          {expandedLogSection && (
+            <div className={styles.sectionDropdownBody}>
+              <div className={styles.sectionLogHeader}>
+                <p className={styles.sectionDropdownDesc}>
+                  {quarantined.length + reIncludedFileOutliers.length}{' '}
+                  {quarantined.length + reIncludedFileOutliers.length === 1 ? 'entry' : 'entries'} excluded
+                  across {allOutlierEdgeKeys.length}{' '}
+                  {allOutlierEdgeKeys.length === 1 ? 'transition' : 'transitions'}.
+                  Click a row to include all outliers for that transition, or click individual dots.
+                </p>
+                <button className={styles.selectAllBtn} onClick={toggleAll}>
+                  {allSelected ? 'Deselect all' : 'Select all'}
+                </button>
+              </div>
           <div className={styles.tableWrapper}>
             <table>
               <thead>
@@ -596,94 +814,100 @@ export default function Statistics() {
                   <th className={styles.checkTh}></th>
                   <th>From State</th>
                   <th>To State</th>
-                  <th>Sojourn Time (s)</th>
-                  <th>Outlier Score</th>
-                  <th></th>
+                  <th>Outliers</th>
                 </tr>
               </thead>
               <tbody>
-                {quarantined.map((q, i) => {
-                  const edgeKey = `${q.fromState}-${q.toState}`;
+                {allOutlierEdgeKeys.map(edgeKey => {
+                  const pairData = quarantinedByPair.get(edgeKey);
+                  const fileOuts = fileOutliersByEdgeKey.get(edgeKey) ?? [];
                   const edgeDetail = edgeDetailsByPair.get(edgeKey);
+                  const fromState = pairData?.fromState ?? fileOuts[0]?.fromState ?? '';
+                  const toState = pairData?.toState ?? fileOuts[0]?.toState ?? '';
+                  const totalCount = (pairData?.indices.length ?? 0) + fileOuts.length;
+                  const allQuarantinedOk = !pairData || pairData.indices.every(i => included.has(i));
+                  const allFileOutsOk = fileOuts.every(o => includedFileEntries.has(`${o.pairKey}::${o.transitionIdx}`));
+                  const allPairIncluded = totalCount > 0 && allQuarantinedOk && allFileOutsOk;
+
+                  const togglePair = () => {
+                    if (pairData) {
+                      setIncluded(prev => {
+                        const next = new Set(prev);
+                        if (allPairIncluded) pairData.indices.forEach(i => next.delete(i));
+                        else pairData.indices.forEach(i => next.add(i));
+                        return next;
+                      });
+                    }
+                    if (fileOuts.length > 0) {
+                      setIncludedFileEntries(prev => {
+                        const next = new Set(prev);
+                        if (allPairIncluded) fileOuts.forEach(o => next.delete(`${o.pairKey}::${o.transitionIdx}`));
+                        else fileOuts.forEach(o => next.add(`${o.pairKey}::${o.transitionIdx}`));
+                        return next;
+                      });
+                    }
+                  };
+
+                  const excl = excludedClean.get(edgeKey) ?? new Set<number>();
+                  const dots: DotData[] = [
+                    ...(edgeDetail?.times ?? []).map((v, idx) => ({
+                      value: v,
+                      color: excl.has(idx) ? 'orange' as const : 'blue' as const,
+                      onClick: () => toggleCleanEntry(edgeKey, idx),
+                    })),
+                    ...(pairData?.indices ?? []).map(i => ({
+                      value: quarantined[i].sojournTime,
+                      color: included.has(i) ? 'green' as const : 'red' as const,
+                      onClick: () => toggleEntry(i),
+                      large: true,
+                    })),
+                    ...fileOuts.map(o => ({
+                      value: o.sojournTime,
+                      color: includedFileEntries.has(`${o.pairKey}::${o.transitionIdx}`) ? 'green' as const : 'red' as const,
+                      onClick: () => toggleFileEntry(o.pairKey, o.transitionIdx),
+                      large: true,
+                    })),
+                  ];
+
                   return (
-                  <>
-                  <tr
-                    key={i}
-                    className={included.has(i) ? styles.includedRow : undefined}
-                    onClick={() => toggleEntry(i)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td className={styles.checkTd}>
-                      <input
-                        type="checkbox"
-                        checked={included.has(i)}
-                        onChange={() => toggleEntry(i)}
-                        onClick={(e) => e.stopPropagation()}
-                        className={styles.checkbox}
-                      />
-                    </td>
-                    <td>{nodeLabel[q.fromState] ?? q.fromState}</td>
-                    <td>{nodeLabel[q.toState] ?? q.toState}</td>
-                    <td>{q.sojournTime.toFixed(2)}</td>
-                    <td>
-                      <div className={styles.scoreCell}>
-                        <div className={styles.scoreBar}>
-                          <div
-                            className={styles.scoreFill}
-                            style={{ width: `${q.outlierScore * 100}%` }}
-                          />
-                        </div>
-                        <span className={styles.scoreNum}>{q.outlierScore.toFixed(2)}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <button
-                        className={styles.detailsBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExpandedQuarantined(prev => {
-                            const n = new Set(prev);
-                            n.has(i) ? n.delete(i) : n.add(i);
-                            return n;
-                          });
-                        }}
+                    <Fragment key={edgeKey}>
+                      <tr
+                        className={allPairIncluded ? styles.includedRow : undefined}
+                        onClick={togglePair}
+                        style={{ cursor: 'pointer' }}
                       >
-                        {expandedQuarantined.has(i) ? 'Hide Details' : 'Details'}
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedQuarantined.has(i) && edgeDetail && (() => {
-                    const excl = excludedClean.get(edgeKey) ?? new Set<number>();
-                    const dots: DotData[] = [
-                      ...edgeDetail.times.map((v, idx) => ({
-                        value: v,
-                        color: excl.has(idx) ? 'orange' as const : 'blue' as const,
-                        onClick: () => toggleCleanEntry(edgeKey, idx),
-                      })),
-                      ...quarantined
-                        .map((oq, oi) => ({ oq, oi }))
-                        .filter(({ oq, oi }) => oi !== i && oq.fromState === q.fromState && oq.toState === q.toState)
-                        .map(({ oq, oi }) => ({
-                          value: oq.sojournTime,
-                          color: included.has(oi) ? 'blue' as const : 'orange' as const,
-                          onClick: () => toggleEntry(oi),
-                        })),
-                      { value: q.sojournTime, color: included.has(i) ? 'blue' : 'red', onClick: () => toggleEntry(i), large: true },
-                    ];
-                    return (
-                      <tr key={`detail-q-${i}`} className={styles.detailRow}>
-                        <td colSpan={6}>
-                          <DotPlot dots={dots} avg={edgeDetail.avg} unit="s" />
+                        <td className={styles.checkTd}>
+                          <input
+                            type="checkbox"
+                            checked={allPairIncluded}
+                            onChange={togglePair}
+                            onClick={(e) => e.stopPropagation()}
+                            className={styles.checkbox}
+                          />
                         </td>
+                        <td>{nodeLabel[fromState] ?? fromState}</td>
+                        <td>{nodeLabel[toState] ?? toState}</td>
+                        <td>{totalCount}</td>
                       </tr>
-                    );
-                  })()}
-                  </>
+                      {dots.length > 0 && (
+                        <tr className={styles.detailRow}>
+                          <td colSpan={4}>
+                            <DotPlot dots={dots} avg={edgeDetail?.avg ?? 0} unit="s" />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
+              <div className={styles.sectionDropdownFooter}>
+                <button className={styles.sectionCloseBtn} onClick={closeLogSection}>Close ▲</button>
+                <button className={styles.backToTopBtn} onClick={scrollToTop}>↑ Back to top</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -767,73 +991,6 @@ export default function Statistics() {
         </div>
       )}
 
-      {reIncludedFileOutliers.length > 0 && (
-        <div className={styles.fileOutliersSection}>
-          <div className={styles.quarantineHeader}>
-            <div>
-              <h2 className={styles.quarantineTitle}>Outliers in Re-included Transitions</h2>
-              <p className={styles.quarantineDesc}>
-                {reIncludedFileOutliers.length} {reIncludedFileOutliers.length === 1 ? 'entry was' : 'entries were'} flagged
-                as sojourn time outliers within the re-included transitions and excluded from the statistics above.
-                Check entries to include them — values update automatically.
-              </p>
-            </div>
-            <button className={styles.selectAllBtn} onClick={toggleAllFileEntries}>
-              {allFileEntriesSelected ? 'Deselect all' : 'Select all'}
-            </button>
-          </div>
-          <div className={styles.tableWrapper}>
-            <table>
-              <thead>
-                <tr>
-                  <th className={styles.checkTh}></th>
-                  <th>File</th>
-                  <th>From State</th>
-                  <th>To State</th>
-                  <th>Sojourn Time (s)</th>
-                  <th>Outlier Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reIncludedFileOutliers.map((o, i) => {
-                  const key = `${o.pairKey}::${o.transitionIdx}`;
-                  const isIncluded = includedFileEntries.has(key);
-                  return (
-                    <tr
-                      key={i}
-                      className={isIncluded ? styles.includedRow : undefined}
-                      onClick={() => toggleFileEntry(o.pairKey, o.transitionIdx)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <td className={styles.checkTd}>
-                        <input
-                          type="checkbox"
-                          checked={isIncluded}
-                          onChange={() => toggleFileEntry(o.pairKey, o.transitionIdx)}
-                          onClick={(e) => e.stopPropagation()}
-                          className={styles.checkbox}
-                        />
-                      </td>
-                      <td className={styles.suspiciousFilename}>{o.filename}</td>
-                      <td>{nodeLabel[o.fromState] ?? o.fromState}</td>
-                      <td>{nodeLabel[o.toState] ?? o.toState}</td>
-                      <td>{o.sojournTime.toFixed(2)}</td>
-                      <td>
-                        <div className={styles.scoreCell}>
-                          <div className={styles.scoreBar}>
-                            <div className={styles.scoreFill} style={{ width: `${o.outlierScore * 100}%` }} />
-                          </div>
-                          <span className={styles.scoreNum}>{o.outlierScore.toFixed(2)}</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
