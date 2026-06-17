@@ -1,10 +1,10 @@
-import numpy as np
+﻿import numpy as np
 from dataclasses import dataclass, field
 from scipy import stats
 
-from src.interfaces.state_transition_info import StateTransitionInfo
-from src.interfaces.state import State
-from src.interfaces.state_transition_statistics import StateTransitionStatistics
+from interfaces.state_transition_info import StateTransitionInfo
+from interfaces.state import State
+from interfaces.state_transition_statistics import StateTransitionStatistics
 from classes.std_state_transition_statistics import StdStateTransitionStatistics
 from utils.enums import Distribution
 from utils.outlier_detection import detect_outliers_with_scores
@@ -29,8 +29,8 @@ class GroupedTransitions:
     state_objects retains the original State instances so they can be passed to
     StdStateTransitionStatistics without re-constructing them from string names.
     """
-    groups: dict = field(default_factory=dict)          # (fn, tn) → list[StateTransitionInfo]
-    state_objects: dict = field(default_factory=dict)   # state name → State instance
+    groups: dict = field(default_factory=dict)          # (fn, tn) â†’ list[StateTransitionInfo]
+    state_objects: dict = field(default_factory=dict)   # state name â†’ State instance
 
 
 @dataclass
@@ -86,6 +86,76 @@ def find_distribution(sojourn_times: list[int]) -> Distribution:
     if best_dist is None:
         return Distribution.NONE
     return _DIST_MAP.get(best_dist.name, Distribution.NONE)
+
+
+# ---------------------------------------------------------------------------
+# Extended distribution fitting for display (15 candidates)
+# ---------------------------------------------------------------------------
+
+from scipy.stats import rv_continuous  # noqa: E402 â€” imported after scipy.stats alias
+
+_DISPLAY_DISTRIBUTIONS: list[tuple[str, rv_continuous]] = [
+    ('Normal',        stats.norm),
+    ('Log-normal',    stats.lognorm),
+    ('Exponential',   stats.expon),
+    ('Weibull',       stats.weibull_min),
+    ('Gamma',         stats.gamma),
+    ('Log-logistic',  stats.fisk),
+    ('Inv. Gaussian', stats.invgauss),
+    ('Gumbel',        stats.gumbel_r),
+    ('Logistic',      stats.logistic),
+    ('Rayleigh',      stats.rayleigh),
+    ('Nakagami',      stats.nakagami),
+    ('Pearson III',   stats.pearson3),
+    ('Burr',          stats.burr),
+    ('Pareto',        stats.pareto),
+    ('Cauchy',        stats.cauchy),
+]
+
+
+def fit_distribution_for_display(
+    sojourn_times: list[float],
+    min_n: int = 20,
+) -> dict | None:
+    """Fits 15 candidate distributions and returns the best by KS p-value.
+
+    Returns a dict with keys 'distribution' (str), 'pValue' (float), and
+    'ksStat' (float), or None if there are fewer than min_n data points or all
+    fits fail.  The KS p-value is the probability of observing a KS statistic as
+    large as the one measured if the data truly follows the fitted distribution;
+    higher is a better fit.
+    """
+    if len(sojourn_times) < min_n:
+        return None
+
+    arr = np.asarray(sojourn_times, dtype=float)
+    arr = arr[np.isfinite(arr)]
+    if len(arr) < min_n:
+        return None
+
+    best_name: str | None = None
+    best_pvalue = -1.0
+    best_stat = 1.0
+
+    for name, dist in _DISPLAY_DISTRIBUTIONS:
+        try:
+            params = dist.fit(arr)
+            ks_stat, pvalue = stats.kstest(arr, dist.cdf, args=params)
+            if pvalue > best_pvalue:
+                best_pvalue = float(pvalue)
+                best_stat = float(ks_stat)
+                best_name = name
+        except Exception:
+            continue
+
+    if best_name is None:
+        return None
+
+    return {
+        'distribution': best_name,
+        'pValue': round(best_pvalue, 4),
+        'ksStat': round(best_stat, 4),
+    }
 
 
 # ---------------------------------------------------------------------------

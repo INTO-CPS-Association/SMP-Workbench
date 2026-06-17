@@ -1,6 +1,6 @@
-import json
+﻿import json
 import pathlib
-from src.interfaces.file_reading_strategy import FileReadingStrategy
+from interfaces.file_reading_strategy import FileReadingStrategy
 from classes.json_file_wrapper import JsonFileWrapper
 
 class JsonFileReadingStrategy(FileReadingStrategy):

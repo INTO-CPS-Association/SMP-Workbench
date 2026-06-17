@@ -1,5 +1,5 @@
-from src.interfaces.log_file import LogFile
-from src.interfaces.state_transition_info import StateTransitionInfo
+﻿from interfaces.log_file import LogFile
+from interfaces.state_transition_info import StateTransitionInfo
 
 class StandardLogFile(LogFile):
        # Force giving parameters during creation

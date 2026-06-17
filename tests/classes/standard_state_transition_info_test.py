@@ -1,7 +1,7 @@
-import pytest
+﻿import pytest
 from classes.standard_state import StandardState
 from classes.standard_state_transition_info import StandardStateTransitionInfo
-from src.interfaces.state_transition_info import StateTransitionInfo
+from interfaces.state_transition_info import StateTransitionInfo
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ class TestStandardStateTransitionInfoEquality:
         assert StandardStateTransitionInfo(a, b, 100) == StandardStateTransitionInfo(a, b, 100)
 
     def test_same_pair_different_sojourn_are_equal(self, a, b):
-        # Equality is (from, to) pair only — sojourn time is intentionally ignored
+        # Equality is (from, to) pair only â€” sojourn time is intentionally ignored
         assert StandardStateTransitionInfo(a, b, 1) == StandardStateTransitionInfo(a, b, 999)
 
     def test_different_from_state_not_equal(self, a, b, c):

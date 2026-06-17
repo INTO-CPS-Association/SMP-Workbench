@@ -1,4 +1,4 @@
-from src.interfaces.file_wrapper import FileWrapper
+﻿from interfaces.file_wrapper import FileWrapper
 
 class JsonFileWrapper(FileWrapper):
     def __init__(self, objectList: list[dict[str, str]]):

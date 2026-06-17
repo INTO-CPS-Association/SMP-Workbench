@@ -1,6 +1,6 @@
-import pytest
+﻿import pytest
 from classes.standard_state import StandardState
-from src.interfaces.state import State
+from interfaces.state import State
 
 
 class TestStandardStateCreation:

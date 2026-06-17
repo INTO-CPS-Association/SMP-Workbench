@@ -1,6 +1,6 @@
-import pytest
+﻿import pytest
 
-from src.interfaces.file_reading_strategy import FileReadingStrategy
+from interfaces.file_reading_strategy import FileReadingStrategy
 from classes.json_file_reading_strategy import JsonFileReadingStrategy
 from classes.json_file_wrapper import JsonFileWrapper
 

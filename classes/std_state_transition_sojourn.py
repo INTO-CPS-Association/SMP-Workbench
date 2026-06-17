@@ -1,7 +1,7 @@
-from src.interfaces.state_transition_sojourn import StateTransitionSojourn
+﻿from interfaces.state_transition_sojourn import StateTransitionSojourn
 from classes.standard_state import StandardState
 from utils.enums import Distribution
-from src.interfaces.state import State
+from interfaces.state import State
 
 class StdStateTransitionSojourn(StateTransitionSojourn):
     def __init__(self, fromState: StandardState, toState: StandardState, sojournTimes: list[int], sojournAverage: float, sojournMedian: float, distribution: Distribution) -> None:

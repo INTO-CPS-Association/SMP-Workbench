@@ -1,4 +1,4 @@
-from src.interfaces.state import State
+﻿from interfaces.state import State
 
 class StandardState(State):
     def __init__(self, name: str) -> None:

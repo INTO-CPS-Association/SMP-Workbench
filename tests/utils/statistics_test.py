@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 
 from utils.statistics import (
     calculateStatistics,
@@ -13,8 +13,8 @@ from utils.enums import Distribution
 from classes.standard_state import StandardState
 from classes.standard_state_transition_info import StandardStateTransitionInfo
 from classes.std_state_transition_statistics import StdStateTransitionStatistics
-from src.interfaces.state_transition_info import StateTransitionInfo
-from src.interfaces.state_transition_statistics import StateTransitionStatistics
+from interfaces.state_transition_info import StateTransitionInfo
+from interfaces.state_transition_statistics import StateTransitionStatistics
 
 PRECISION = 1e-5
 
@@ -220,7 +220,7 @@ class TestCalculateStatisticsInvariants:
 
 class TestCalculateStatisticsOutlierFallback:
     def test_single_pair_all_retained_when_too_few_samples(self):
-        # Only 2 transitions → below _MIN_SAMPLES → LOF skipped → all clean
+        # Only 2 transitions â†’ below _MIN_SAMPLES â†’ LOF skipped â†’ all clean
         transitions = [_make_transition("A", "B", t) for t in [10, 20]]
         result = calculateStatistics(transitions)
         total = _total_transitions(result)
@@ -228,7 +228,7 @@ class TestCalculateStatisticsOutlierFallback:
         assert len(result.quarantined) == 0
 
     def test_all_transitions_kept_when_all_would_be_outliers(self):
-        # Enough transitions for LOF but all would be outliers →
+        # Enough transitions for LOF but all would be outliers â†’
         # fallback: keep all as clean so the pair doesn't disappear
         transitions = [_make_transition("A", "B", t) for t in range(10)]
         result = calculateStatistics(transitions)

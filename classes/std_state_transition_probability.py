@@ -1,5 +1,5 @@
-from src.interfaces.state_transition_probability import StateTransitionProbability
-from src.interfaces.state import State
+﻿from interfaces.state_transition_probability import StateTransitionProbability
+from interfaces.state import State
 
 class StdStateTransitionProbability(StateTransitionProbability):
     def __init__(self, fromState: State, toState: State, probability: float) -> None:

@@ -1,4 +1,4 @@
-import json
+﻿import json
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -12,8 +12,8 @@ from backend.routers.analysis import (
 )
 from backend.schemas import SuspiciousTransitionEntry
 from utils.statistics import calculateStatistics, StatisticsResult, QuarantinedEntry
-from src.interfaces.state_transition_info import StateTransitionInfo
-from src.interfaces.state_transition_statistics import StateTransitionStatistics
+from interfaces.state_transition_info import StateTransitionInfo
+from interfaces.state_transition_statistics import StateTransitionStatistics
 
 client = TestClient(app)
 
@@ -44,7 +44,7 @@ def _upload(paths: list[Path]) -> list[tuple]:
 
 
 # ---------------------------------------------------------------------------
-# calculateStatistics — fixed tuple-unpack bug (was: stats, q = calculateStatistics(...))
+# calculateStatistics â€” fixed tuple-unpack bug (was: stats, q = calculateStatistics(...))
 # ---------------------------------------------------------------------------
 
 class TestCalculateStatisticsSingleFile:
