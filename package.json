@@ -52,7 +52,8 @@
       "target": [
         "dmg"
       ],
-      "identity": null
+      "identity": "-",
+      "hardenedRuntime": false
     },
     "dmg": {
       "writeUpdateInfo": false
