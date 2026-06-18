@@ -33,6 +33,13 @@ function getRendererRoot() {
   return path.join(projectRoot, 'frontend', 'dist');
 }
 
+function getWindowIcon() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'icon.png');
+  }
+  return path.join(projectRoot, 'buildResources', 'icon.png');
+}
+
 function isSubpath(parent, child) {
   const relative = path.relative(parent, child);
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
@@ -269,6 +276,7 @@ async function createWindow(apiBaseUrl) {
     minWidth: 960,
     minHeight: 680,
     title: 'SMP Workbench',
+    icon: getWindowIcon(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,

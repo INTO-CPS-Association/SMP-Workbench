@@ -2,7 +2,10 @@
   "name": "smp-workbench",
   "version": "0.1.0",
   "description": "Desktop packaging for SMP Workbench.",
-  "author": "Cl1n1cal",
+  "author": {
+    "name": "Cl1n1cal",
+    "email": "Cl1n1cal@users.noreply.github.com"
+  },
   "private": true,
   "type": "module",
   "main": "electron/main.js",
@@ -20,6 +23,7 @@
     "appId": "com.cl1n1cal.smpworkbench",
     "productName": "SMP Workbench",
     "artifactName": "SMP-Workbench-${version}-${os}-${arch}.${ext}",
+    "icon": "buildResources/icon",
     "asar": true,
     "npmRebuild": false,
     "files": [
@@ -34,6 +38,10 @@
       {
         "from": "build/backend/smp-workbench-backend",
         "to": "backend"
+      },
+      {
+        "from": "buildResources/icon.png",
+        "to": "icon.png"
       }
     ],
     "directories": {
@@ -56,7 +64,8 @@
         "AppImage",
         "deb"
       ],
-      "category": "Science"
+      "category": "Science",
+      "maintainer": "Cl1n1cal <Cl1n1cal@users.noreply.github.com>"
     },
     "publish": [
       {
