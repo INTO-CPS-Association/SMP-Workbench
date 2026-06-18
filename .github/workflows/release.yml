@@ -23,7 +23,7 @@ jobs:
 
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      PYINSTALLER_CONFIG_DIR: ${{ runner.temp }}/pyinstaller
+      PYINSTALLER_CONFIG_DIR: .pyinstaller-cache
 
     steps:
       - name: Checkout
