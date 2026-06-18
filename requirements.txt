@@ -6,3 +6,8 @@ httpx
 python-statemachine
 pydot
 graphviz
+numpy
+scipy
+scikit-learn
+python-multipart
+pyinstaller

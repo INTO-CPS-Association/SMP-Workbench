@@ -1,5 +1,74 @@
 {
-  "dependencies": {
-    "@xyflow/react": "^12.10.2"
+  "name": "smp-workbench",
+  "version": "0.1.0",
+  "description": "Desktop packaging for SMP Workbench.",
+  "author": "Cl1n1cal",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "pyinstaller --clean --noconfirm --name smp-workbench-backend --distpath build/backend --workpath build/pyinstaller --specpath build/pyinstaller backend/desktop_main.py",
+    "build": "npm run build:frontend && npm run build:backend",
+    "desktop:dev": "node scripts/desktop-dev.mjs",
+    "dist": "npm run build && electron-builder --publish never",
+    "release": "npm run build && electron-builder --publish always",
+    "test:backend": "python3 -m pytest -q",
+    "smoke:backend": "python3 scripts/smoke-backend.py"
+  },
+  "build": {
+    "appId": "com.cl1n1cal.smpworkbench",
+    "productName": "SMP Workbench",
+    "artifactName": "SMP-Workbench-${version}-${os}-${arch}.${ext}",
+    "asar": true,
+    "npmRebuild": false,
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "frontend/dist",
+        "to": "frontend"
+      },
+      {
+        "from": "build/backend/smp-workbench-backend",
+        "to": "backend"
+      }
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "buildResources"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "identity": null
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Science"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Cl1n1cal",
+        "repo": "SMPTool",
+        "releaseType": "draft"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "42.4.1",
+    "electron-builder": "26.15.3"
   }
 }

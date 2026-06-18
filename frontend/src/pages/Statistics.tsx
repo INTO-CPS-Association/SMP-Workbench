@@ -274,43 +274,6 @@ export default function Statistics() {
 
   const sortedFilenames = useMemo(() => [...filesByName.keys()].sort(), [filesByName]);
 
-  const allPairsSelected = useMemo(() => {
-    let total = 0, selected = 0;
-    for (const [filename, fd] of filesByName) {
-      for (const [pairKey] of fd.pairTimes) {
-        const sep = pairKey.indexOf('::');
-        const f = pairKey.slice(0, sep), t = pairKey.slice(sep + 2);
-        total++;
-        if (includedFilePairs.has(`${filename}::${f}::${t}`) || loadingFiles.has(filename)) selected++;
-      }
-    }
-    return total > 0 && selected === total;
-  }, [filesByName, includedFilePairs, loadingFiles]);
-
-  const toggleAllPairs = () => {
-    if (allPairsSelected) {
-      setIncludedFilePairs(new Set());
-      setFileOutlierData(new Map());
-      setIncludedFileEntries(new Set());
-      setLoadingFiles(new Set());
-    } else {
-      const keys = new Set(includedFilePairs);
-      const toScore: string[] = [];
-      for (const [filename, fd] of filesByName) {
-        for (const [pairKey] of fd.pairTimes) {
-          const sep = pairKey.indexOf('::');
-          const f = pairKey.slice(0, sep), t = pairKey.slice(sep + 2);
-          keys.add(`${filename}::${f}::${t}`);
-        }
-        if (!fileOutlierData.has(filename) && !loadingFiles.has(filename)) {
-          toScore.push(filename);
-        }
-      }
-      setIncludedFilePairs(keys);
-      toScore.forEach(fn => scoreFile(fn));
-    }
-  };
-
   const quarantinedByPair = useMemo(() => {
     const map = new Map<string, { fromState: string; toState: string; indices: number[] }>();
     quarantined.forEach((q, i) => {

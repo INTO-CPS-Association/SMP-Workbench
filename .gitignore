@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# Node / Electron
+node_modules/
+release/
+*.tsbuildinfo
+.DS_Store
+
 # Distribution / packaging
 .Python
 build/

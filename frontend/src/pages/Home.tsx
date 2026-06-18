@@ -38,7 +38,7 @@ function Home() {
         <ThemeToggle />
       </div>
       <header className={styles.header}>
-        <h1 className={styles.title}>SMP Visualizer</h1>
+        <h1 className={styles.title}>SMP Workbench</h1>
         <p className={styles.subtitle}>
           Analyze and visualize your state machine protocols
         </p>

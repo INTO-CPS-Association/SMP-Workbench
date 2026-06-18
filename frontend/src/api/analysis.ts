@@ -1,4 +1,5 @@
 import client from './client';
+import { apiUrl } from './baseUrl';
 
 export interface AnalysisNode {
   id: string;
@@ -80,7 +81,7 @@ export async function analyzeFilesStreaming(
   const formData = new FormData();
   Array.from(files).forEach((file) => formData.append('files', file));
 
-  const response = await fetch('http://localhost:8000/api/analyze/stream?method=iqr&file_method=iqr', {
+  const response = await fetch(apiUrl('/api/analyze/stream?method=iqr&file_method=iqr'), {
     method: 'POST',
     body: formData,
   });
