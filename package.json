@@ -54,10 +54,16 @@
       ],
       "identity": null
     },
+    "dmg": {
+      "writeUpdateInfo": false
+    },
     "win": {
       "target": [
         "nsis"
       ]
+    },
+    "nsis": {
+      "differentialPackage": false
     },
     "linux": {
       "target": [
@@ -72,7 +78,8 @@
         "provider": "github",
         "owner": "Cl1n1cal",
         "repo": "SMPTool",
-        "releaseType": "draft"
+        "releaseType": "draft",
+        "publishAutoUpdate": false
       }
     ]
   },

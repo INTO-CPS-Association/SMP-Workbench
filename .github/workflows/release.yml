@@ -82,5 +82,8 @@ jobs:
         with:
           name: smp-workbench-${{ runner.os }}
           path: |
-            release/**
+            release/*.AppImage
+            release/*.deb
+            release/*.dmg
+            release/*.exe
           if-no-files-found: error
