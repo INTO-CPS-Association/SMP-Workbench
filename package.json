@@ -77,8 +77,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "Cl1n1cal",
-        "repo": "SMPTool",
+        "owner": "INTO-CPS-Association",
+        "repo": "SMP-Workbench",
         "releaseType": "draft",
         "publishAutoUpdate": false
       }

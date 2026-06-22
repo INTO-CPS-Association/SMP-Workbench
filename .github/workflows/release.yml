@@ -13,6 +13,11 @@ jobs:
   build:
     name: Build ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      PYINSTALLER_CONFIG_DIR: .pyinstaller-cache
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -20,10 +25,6 @@ jobs:
           - windows-latest
           - macos-latest
           - ubuntu-latest
-
-    env:
-      CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      PYINSTALLER_CONFIG_DIR: .pyinstaller-cache
 
     steps:
       - name: Checkout
@@ -74,8 +75,6 @@ jobs:
       - name: Package and publish draft release
         if: github.ref_type == 'tag'
         run: npx electron-builder --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v6
