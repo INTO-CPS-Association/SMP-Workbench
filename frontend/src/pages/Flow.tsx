@@ -30,6 +30,7 @@ import { InspectorContext } from './InspectorContext';
 import type { InspectorRequest } from './InspectorContext';
 import { TransitionInspector } from './TransitionInspector';
 import type { SaveResult } from './TransitionInspector';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const nodeTypes = { circleDefault: RoundDefaultNode };
 const edgeTypes = { labeled: LabeledEdge };
@@ -140,22 +141,21 @@ const DnDFlow = () => {
     [screenToFlowPosition, type, setNodes],
   );
 
-  const warnMissingDistributions = useCallback((): boolean => {
+  const missingDistributionsMessage = useCallback((): string | null => {
     const missing = edges.filter(e => !(e.data as any)?.chosenDistribution);
-    if (!missing.length) return true;
+    if (!missing.length) return null;
     const lines = missing.map(e => {
       const src = (nodes.find(n => n.id === e.source)?.data?.label as string) ?? e.source;
       const tgt = (nodes.find(n => n.id === e.target)?.data?.label as string) ?? e.target;
       return `  • ${src} → ${tgt}`;
     });
-    return window.confirm(
-      `${missing.length} transition${missing.length !== 1 ? 's have' : ' has'} no distribution assigned:\n\n` +
-      `${lines.join('\n')}\n\nSave anyway?`,
-    );
+    return `${missing.length} transition${missing.length !== 1 ? 's have' : ' has'} no distribution assigned:\n\n` +
+      `${lines.join('\n')}\n\nSave anyway?`;
   }, [nodes, edges]);
 
-  const onSave = useCallback(() => {
-    if (!warnMissingDistributions()) return;
+  const [pendingSave, setPendingSave] = useState<{ message: string; run: () => void } | null>(null);
+
+  const doSave = useCallback(() => {
     const project = {
       nodes,
       edges,
@@ -169,39 +169,52 @@ const DnDFlow = () => {
     a.download = 'graph.json';
     a.click();
     URL.revokeObjectURL(url);
-  }, [nodes, edges, warnMissingDistributions]);
+  }, [nodes, edges]);
 
-  const onSaveAs = useCallback(async () => {
-    if (!warnMissingDistributions()) return;
-    const project = {
-      nodes,
-      edges,
-      quarantinedEntries: store.getQuarantinedEntries(),
-      suspiciousFiles: store.getSuspiciousFiles(),
-    };
-    const json = JSON.stringify(project, null, 2);
-    if ('showSaveFilePicker' in window) {
-      try {
-        const fileHandle = await (window as any).showSaveFilePicker({
-          suggestedName: 'graph.json',
-          types: [{ description: 'JSON File', accept: { 'application/json': ['.json'] } }],
-        });
-        const writable = await fileHandle.createWritable();
-        await writable.write(json);
-        await writable.close();
-      } catch { /* user cancelled */ }
-    } else {
-      const filename = window.prompt('Filename:', 'graph');
-      if (!filename) return;
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename.endsWith('.json') ? filename : `${filename}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  }, [nodes, edges, warnMissingDistributions]);
+  const doSaveAs = useCallback(() => {
+    (async () => {
+      const project = {
+        nodes,
+        edges,
+        quarantinedEntries: store.getQuarantinedEntries(),
+        suspiciousFiles: store.getSuspiciousFiles(),
+      };
+      const json = JSON.stringify(project, null, 2);
+      if ('showSaveFilePicker' in window) {
+        try {
+          const fileHandle = await (window as any).showSaveFilePicker({
+            suggestedName: 'graph.json',
+            types: [{ description: 'JSON File', accept: { 'application/json': ['.json'] } }],
+          });
+          const writable = await fileHandle.createWritable();
+          await writable.write(json);
+          await writable.close();
+        } catch { /* user cancelled */ }
+      } else {
+        const filename = window.prompt('Filename:', 'graph');
+        if (!filename) return;
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename.endsWith('.json') ? filename : `${filename}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    })();
+  }, [nodes, edges]);
+
+  const onSave = useCallback(() => {
+    const message = missingDistributionsMessage();
+    if (!message) { doSave(); return; }
+    setPendingSave({ message, run: doSave });
+  }, [missingDistributionsMessage, doSave]);
+
+  const onSaveAs = useCallback(() => {
+    const message = missingDistributionsMessage();
+    if (!message) { doSaveAs(); return; }
+    setPendingSave({ message, run: doSaveAs });
+  }, [missingDistributionsMessage, doSaveAs]);
 
   const onStatistics = useCallback(() => {
     store.setCurrentGraph({ nodes, edges });
@@ -313,6 +326,21 @@ const DnDFlow = () => {
         probability={inspectorReq.probability}
         onClose={() => setInspectorReq(null)}
         onSave={handleInspectorSave}
+      />
+    )}
+
+    {pendingSave && (
+      <ConfirmDialog
+        title="Missing distributions"
+        message={pendingSave.message}
+        confirmLabel="Save anyway"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          const run = pendingSave.run;
+          setPendingSave(null);
+          run();
+        }}
+        onCancel={() => setPendingSave(null)}
       />
     )}
     </InspectorContext.Provider>
