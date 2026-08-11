@@ -115,7 +115,7 @@ def analyze_anomalies(input: list[int], iter_count: int) -> list[float]:
 def detect_outliers_iqr(sojourn_times: list) -> OutlierResult:
     """IQR-based sojourn-time outlier detection.
 
-    Flags every entry that lies above the upper fence Q3 + 1.5·IQR.
+    Flags every entry that lies outside the fences [Q1 - 1.5·IQR, Q3 + 1.5·IQR].
     Because IQR is a hard threshold (not a scoring method) all flagged
     entries receive outlierScore = 1.0 and clean entries receive 0.0.
     Returns all-clean when fewer than _MIN_SAMPLES values are supplied or
@@ -131,8 +131,9 @@ def detect_outliers_iqr(sojourn_times: list) -> OutlierResult:
     if iqr == 0:
         return OutlierResult(is_outlier=[False] * n, scores=[0.0] * n)
 
+    lower_fence = q1 - 1.5 * iqr
     upper_fence = q3 + 1.5 * iqr
-    is_outlier = [float(v) > upper_fence for v in sojourn_times]
+    is_outlier = [float(v) < lower_fence or float(v) > upper_fence for v in sojourn_times]
     scores     = [1.0 if o else 0.0 for o in is_outlier]
     return OutlierResult(is_outlier=is_outlier, scores=scores)
 
@@ -159,13 +160,16 @@ def detect_suspicious_files(
     file_counts: dict[str, dict[tuple[str, str], int]],
     method: str = 'iqr',
 ) -> list[dict]:
-    """Flags files whose count of a (from, to) transition is anomalously high across all files.
+    """Flags files whose count of a (from, to) transition is anomalous across all files.
 
-    method='iqr'  — IQR fence (Q3 + 1.5·IQR); reliable even with very few files.
+    method='iqr'  — IQR fences (Q1 - 1.5·IQR and Q3 + 1.5·IQR); reliable even
+                    with very few files. A count is flagged if it lies beyond the
+                    upper fence and above the mean, or beyond the lower fence and
+                    below the mean.
     method='lof'  — Adaptive LOF ensemble on the per-pair count vectors; requires
-                    at least _MIN_SAMPLES files.
+                    at least _MIN_SAMPLES files. A count is flagged if its LOF
+                    score exceeds OUTLIER_THRESHOLD and it is above the mean.
 
-    Only counts above the fence/threshold AND above the mean are flagged.
     Every flagged entry includes allCounts and allFilenames (parallel lists) so the
     frontend can identify which file each dot in the distribution plot represents.
     """
@@ -200,10 +204,12 @@ def detect_suspicious_files(
                     })
         else:  # iqr (default)
             q1, q3      = float(np.percentile(counts_vec, 25)), float(np.percentile(counts_vec, 75))
-            upper_fence = q3 + 1.5 * (q3 - q1)
+            iqr         = q3 - q1
+            lower_fence = q1 - 1.5 * iqr
+            upper_fence = q3 + 1.5 * iqr
             for fn, raw in zip(filenames, counts_vec):
                 count = int(raw)
-                if count > upper_fence and count > avg:
+                if (count > upper_fence and count > avg) or (count < lower_fence and count < avg):
                     flagged.append({
                         "filename":     fn,
                         "transition":   f"{pair[0]} → {pair[1]}",
