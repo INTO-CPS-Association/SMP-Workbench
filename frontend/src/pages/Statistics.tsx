@@ -518,7 +518,7 @@ export default function Statistics() {
             <div className={styles.sectionDropdownBody}>
               <p className={styles.sectionDropdownDesc}>
                 {sortedFilenames.length === 1 ? '1 file was' : `${sortedFilenames.length} files were`} excluded
-                for having an anomalously high transition count. All transitions from each file are listed —
+                for having an anomalously high or low transition count. All transitions from each file are listed —
                 the transition that triggered exclusion is highlighted. Check a transition to re-include its data.
               </p>
 
