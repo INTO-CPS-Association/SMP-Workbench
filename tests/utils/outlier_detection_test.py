@@ -183,12 +183,26 @@ class TestDetectOutliersIQR:
             assert score == expected_score
 
     def test_only_above_upper_fence_flagged(self):
-        # Manually verify: Q1=10, Q3=14, IQR=4, upper_fence=14+6=20
+        # Q1=11.5, Q3=16.5, IQR=5, upper_fence=16.5+7.5=24
         data = [10, 11, 12, 13, 14, 19, 25]
         result = detect_outliers_iqr(data)
-        # 25 > 20 → outlier; 19 <= 20 → clean
+        # 25 > 24 → outlier; 19 <= 24 → clean
         assert result.is_outlier[5] is False   # 19
         assert result.is_outlier[6] is True    # 25
+
+    def test_below_lower_fence_flagged(self):
+        # A clear low-side outlier must be flagged too, not just high-side ones
+        data = [10, 11, 10, 12, 10, 11, -1000]
+        result = detect_outliers_iqr(data)
+        assert result.is_outlier[-1] is True
+
+    def test_both_fences_active_simultaneously(self):
+        # One low outlier and one high outlier in the same sample should both be flagged
+        data = [10, 11, 12, 13, 14, -1000, 1000]
+        result = detect_outliers_iqr(data)
+        assert result.is_outlier[5] is True   # -1000
+        assert result.is_outlier[6] is True   # 1000
+        assert not any(result.is_outlier[:5])
 
 
 # ---------------------------------------------------------------------------
@@ -267,13 +281,34 @@ class TestDetectSuspiciousFiles:
         filenames = [r["filename"] for r in result]
         assert "outlier_file" in filenames
 
-    def test_below_mean_never_flagged(self):
-        # A low-count file should never be returned even if it's an outlier
+    def test_low_count_file_flagged_iqr(self):
+        # A file with a much lower count than the others must be flagged too
         counts = {f"file{i}": {("A", "B"): 100} for i in range(5)}
         counts["low_file"] = {("A", "B"): 1}
         result = detect_suspicious_files(counts, method="iqr")
         filenames = [r["filename"] for r in result]
-        assert "low_file" not in filenames
+        assert "low_file" in filenames
+
+    def test_low_count_entry_below_avg(self):
+        counts = {f"file{i}": {("A", "B"): 100} for i in range(5)}
+        counts["low_file"] = {("A", "B"): 1}
+        result = detect_suspicious_files(counts, method="iqr")
+        entry = next(r for r in result if r["filename"] == "low_file")
+        assert entry["count"] < entry["avgCount"]
+
+    def test_mild_dip_not_flagged(self):
+        # A count that's below average but within the fences (lower_fence=3.0) should not be flagged
+        counts = {
+            "file0": {("A", "B"): 10},
+            "file1": {("A", "B"): 12},
+            "file2": {("A", "B"): 14},
+            "file3": {("A", "B"): 16},
+            "file4": {("A", "B"): 18},
+        }
+        counts["mild_file"] = {("A", "B"): 9}
+        result = detect_suspicious_files(counts, method="iqr")
+        filenames = [r["filename"] for r in result]
+        assert "mild_file" not in filenames
 
     def test_result_entries_have_required_keys(self):
         counts = {f"file{i}": {("A", "B"): 5} for i in range(5)}
