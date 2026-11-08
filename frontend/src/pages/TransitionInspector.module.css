@@ -201,3 +201,4 @@
   transition: opacity 0.15s;
 }
 .okBtn:hover { opacity: 0.85; }
+.okBtn:disabled { opacity: 0.5; cursor: not-allowed; }
