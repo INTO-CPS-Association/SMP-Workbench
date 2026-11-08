@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import styles from './TransitionInspector.module.css';
 
-export type DistName = 'exponential' | 'gamma' | 'weibull' | 'normal' | 'lognormal';
+export type DistName = 'exponential' | 'gamma' | 'weibull' | 'normal' | 'lognormal' | 'uniform';
 
 export interface ChosenDistribution {
   name: DistName;
@@ -14,6 +14,7 @@ export const DIST_LABELS: Record<DistName, string> = {
   weibull:     'Weibull',
   normal:      'Normal',
   lognormal:   'Log-normal',
+  uniform:     'Uniform',
 };
 
 export const DIST_SHORT: Record<string, string> = {
@@ -22,6 +23,7 @@ export const DIST_SHORT: Record<string, string> = {
   weibull:     'Weibull',
   normal:      'Normal',
   lognormal:   'Log-N',
+  uniform:     'Uniform',
 };
 
 const PARAM_DEFS: Record<DistName, Array<{ key: string; label: string; step: number }>> = {
@@ -30,6 +32,7 @@ const PARAM_DEFS: Record<DistName, Array<{ key: string; label: string; step: num
   weibull:     [{ key: 'shape', label: 'Shape (k)',  step: 0.01  }, { key: 'scale', label: 'Scale (λ)', step: 0.01 }],
   normal:      [{ key: 'mean',  label: 'Mean (μ)',   step: 0.01  }, { key: 'std',   label: 'Std (σ)',   step: 0.01 }],
   lognormal:   [{ key: 'mu',    label: 'μ (log)',    step: 0.01  }, { key: 'sigma', label: 'σ (log)',   step: 0.001 }],
+  uniform:     [{ key: 'min',   label: 'Min (s)',    step: 0.01  }, { key: 'max',   label: 'Max (s)',   step: 0.01 }],
 };
 
 // --- math helpers ---
@@ -47,6 +50,10 @@ const gammaFn = (x: number) => Math.exp(lgamma(x));
 
 function pdfAt(name: DistName, p: Record<string, number>, x: number): number {
   switch (name) {
+    case 'uniform': {
+      const min = p.min ?? 0, max = p.max ?? 1;
+      return min >= 0 && max > min && x >= min && x <= max ? 1 / (max - min) : 0;
+    }
     case 'exponential': {
       const r = p.rate ?? 1;
       return x >= 0 && r > 0 ? r * Math.exp(-r * x) : 0;
@@ -84,6 +91,7 @@ function estimateParams(name: DistName, times: number[]): Record<string, number>
       weibull:     { shape: 2, scale: 1 },
       normal:      { mean: 0, std: 1 },
       lognormal:   { mu: 0, sigma: 1 },
+      uniform:     { min: 0, max: 1 },
     };
     return defaults[name];
   }
@@ -91,6 +99,11 @@ function estimateParams(name: DistName, times: number[]): Record<string, number>
   const mean = times.reduce((a, b) => a + b, 0) / n;
   const variance = times.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(n - 1, 1);
   switch (name) {
+    case 'uniform': {
+      const min = Math.max(0, times.reduce((a, b) => Math.min(a, b), Infinity));
+      const max = times.reduce((a, b) => Math.max(a, b), -Infinity);
+      return { min, max: max > min ? max : min + 1 };
+    }
     case 'exponential': return { rate: mean > 0 ? 1 / mean : 1 };
     case 'gamma': return {
       shape: Math.max(variance > 0 ? mean ** 2 / variance : 1, 0.01),
@@ -151,16 +164,24 @@ function HistogramChart({
   }
 
   const effectiveBw = bins[0].bw;
-  const maxCount = Math.max(1, bins.reduce((a, b) => (b.count > a ? b.count : a), 0));
+  const uniformHeight = distName === 'uniform'
+    ? pdfAt('uniform', distParams, distParams.min ?? 0) * times.length * effectiveBw : 0;
+  const maxCount = Math.max(1, uniformHeight, bins.reduce((a, b) => (b.count > a ? b.count : a), 0));
   const xMax = bins.length * effectiveBw;
   const barW = PW / bins.length;
 
   const xs = (t: number) => ML + (t / xMax) * PW;
   const ys = (v: number) => MT + PH - (v / maxCount) * PH;
 
-  // Distribution overlay: sample at 200 points, scale PDF → expected counts
+  // Use exact bounds for Uniform so even narrow intervals remain visible.
   let overlayD = '';
-  if (distName) {
+  if (distName === 'uniform') {
+    const min = distParams.min ?? 0, max = distParams.max ?? 1;
+    overlayD = 'M ' + [[0, 0], [min, 0], [min, uniformHeight],
+      [max, uniformHeight], [max, 0], [xMax, 0]]
+      .map(([x, y]) => `${xs(x).toFixed(1)},${ys(y).toFixed(1)}`).join(' L ');
+  } else if (distName) {
+    // Sample continuous curves at 200 points, scale PDF → expected counts.
     const N = 200;
     const pts = Array.from({ length: N + 1 }, (_, i) => {
       const t = (i / N) * xMax;
@@ -301,6 +322,13 @@ export function TransitionInspector({
     () => Object.fromEntries(Object.entries(initial?.params ?? {}).map(([k, v]) => [k, numToStr(v)])),
   );
   const [probInput, setProbInput] = useState(numToStr(probability));
+  const uniformMin = Number(paramInputs.min);
+  const uniformMax = Number(paramInputs.max);
+  const invalidUniform = distName === 'uniform' && (
+    !paramInputs.min?.trim() || !paramInputs.max?.trim() ||
+    !Number.isFinite(uniformMin) || !Number.isFinite(uniformMax) ||
+    uniformMin < 0 || uniformMax <= uniformMin
+  );
 
   // Close on Escape
   const closeRef = useRef(onClose);
@@ -327,6 +355,7 @@ export function TransitionInspector({
   };
 
   const handleOk = () => {
+    if (invalidUniform) return;
     const finalProb = strToNum(probInput, probability);
     let distribution: ChosenDistribution | null = null;
     if (distName) {
@@ -411,8 +440,9 @@ export function TransitionInspector({
             <div className={styles.paramsGrid}>
               {PARAM_DEFS[distName].map(({ key, label, step }) => (
                 <div key={key} className={styles.paramRow}>
-                  <label className={styles.paramLabel}>{label}</label>
+                  <label className={styles.paramLabel} htmlFor={`dist-param-${key}`}>{label}</label>
                   <input
+                    id={`dist-param-${key}`}
                     type="number"
                     className={styles.paramInput}
                     value={paramInputs[key] ?? ''}
@@ -423,11 +453,14 @@ export function TransitionInspector({
               ))}
             </div>
           )}
+          {invalidUniform && (
+            <div role="alert">Enter a non-negative minimum and a maximum greater than the minimum.</div>
+          )}
         </div>
 
         <div className={styles.footer}>
           <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
-          <button className={styles.okBtn} onClick={handleOk}>Save</button>
+          <button className={styles.okBtn} onClick={handleOk} disabled={invalidUniform}>Save</button>
         </div>
 
       </div>

@@ -59,6 +59,9 @@ jobs:
       - name: Test backend
         run: python -m pytest -q
 
+      - name: Test frontend
+        run: npm --prefix frontend test
+
       - name: Build frontend
         run: npm run build:frontend
 
